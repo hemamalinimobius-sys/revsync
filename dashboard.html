@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RevSync — Mobius Revenue Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  /* Mobius brand — white bg, teal accent, charcoal text */
+  --teal:#009B8D;       /* Mobius primary teal */
+  --teal2:#007a6e;      /* darker teal */
+  --teal-bg:#f0faf9;
+  --teal-bd:#b2deda;
+  --charcoal:#1a1a2e;   /* near-black text */
+  --navy:#0a2342;       /* deep navy for sidebar */
+  --white:#ffffff;
+  --light:#f7f8fa;
+  --border:#e5e9ef;
+  --muted:#64748b;
+  --soft:#94a3b8;
+  /* Status colours */
+  --green:#16a34a;--green-bg:#f0fdf4;--green-bd:#bbf7d0;
+  --red:#dc2626;  --red-bg:#fef2f2;  --red-bd:#fecaca;
+  --amber:#d97706;--amber-bg:#fffbeb;--amber-bd:#fde68a;
+  --blue:#1d4ed8; --blue-bg:#eff6ff; --blue-bd:#bfdbfe;
+  /* Summary table (matching screenshot) */
+  --tbl-head:#2e75b6;
+  --tbl-row:#fce4d6;
+  --tbl-total:#2e75b6;
+}
+body{font-family:'Inter',sans-serif;background:var(--light);color:var(--charcoal);display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--white);height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--border);flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+.t-left{display:flex;align-items:center;gap:14px;}
+.logo-img{height:28px;}
+.logo-div{width:1px;height:22px;background:var(--border);}
+.app-label{font-size:13px;font-weight:600;color:var(--charcoal);}
+.app-label span{color:var(--teal);}
+.t-right{display:flex;align-items:center;gap:10px;}
+.user-pill{display:flex;align-items:center;gap:8px;background:var(--light);border:1px solid var(--border);border-radius:30px;padding:5px 12px 5px 6px;}
+.uavatar{width:26px;height:26px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;overflow:hidden;flex-shrink:0;}
+.uavatar img{width:100%;height:100%;object-fit:cover;}
+.uname{font-size:12px;color:var(--charcoal);font-weight:500;}
+.signout-btn{background:none;border:1px solid var(--border);border-radius:7px;padding:5px 12px;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;}
+.signout-btn:hover{border-color:var(--teal);color:var(--teal);}
+
+/* ── LAYOUT ── */
+.layout{display:flex;flex:1;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:218px;background:var(--navy);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+.sb-logo{padding:16px 16px 10px;border-bottom:1px solid rgba(255,255,255,0.07);}
+.sb-logo-text{font-size:13px;font-weight:700;color:white;letter-spacing:0.01em;}
+.sb-logo-text span{color:#5ee8de;}
+.sb-logo-sub{font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;}
+.sb-sect{padding:14px 14px 4px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.28);}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;margin:0 6px 2px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.48);cursor:pointer;transition:all 0.15s;user-select:none;position:relative;}
+.sb-item:hover{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.85);}
+.sb-item.active{background:rgba(94,232,222,0.14);color:#5ee8de;}
+.sb-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
+.sb-badge{margin-left:auto;font-size:10px;background:var(--red);color:white;border-radius:10px;padding:1px 6px;font-weight:700;}
+.sb-spacer{flex:1;}
+.sb-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:rgba(255,255,255,0.25);cursor:pointer;}
+.sb-foot:hover{color:#5ee8de;}
+.hist-list{padding:0 6px;}
+.hist-row{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-radius:7px;margin-bottom:2px;font-size:12px;color:rgba(255,255,255,0.38);cursor:pointer;transition:all 0.15s;}
+.hist-row:hover{background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.75);}
+.hist-badge{font-size:10px;background:rgba(255,255,255,0.07);border-radius:4px;padding:1px 5px;}
+.hist-empty{font-size:11px;color:rgba(255,255,255,0.2);padding:6px 10px;font-style:italic;}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.page-bar{background:var(--white);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.page-title{font-size:15px;font-weight:700;color:var(--charcoal);}
+.page-sub{font-size:12px;color:var(--muted);margin-top:1px;}
+.content{flex:1;overflow-y:auto;padding:20px 24px 60px;}
+
+/* ── CARDS ── */
+.card{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:18px;}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);}
+.card-title{font-size:13px;font-weight:700;color:var(--charcoal);}
+.card-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.card-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.btn{font-size:12px;padding:6px 13px;border:1px solid var(--border);border-radius:7px;cursor:pointer;color:var(--muted);background:var(--white);font-family:'Inter',sans-serif;transition:all 0.2s;white-space:nowrap;}
+.btn:hover{border-color:var(--teal);color:var(--teal);}
+.btn.pri{background:var(--teal);color:white;border-color:var(--teal);}
+.btn.pri:hover{background:var(--teal2);border-color:var(--teal2);}
+.btn.gmail{background:#ea4335;color:white;border-color:#ea4335;}
+.btn.gmail:hover{background:#c5372c;}
+.btn.green{background:var(--green);color:white;border-color:var(--green);}
+
+/* ── KPI ── */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.kpi{background:var(--white);border:1px solid var(--border);border-radius:11px;padding:15px 18px;border-top:3px solid transparent;}
+.kpi.k-teal{border-top-color:var(--teal);}
+.kpi.k-green{border-top-color:var(--green);}
+.kpi.k-red{border-top-color:var(--red);}
+.kpi.k-amber{border-top-color:var(--amber);}
+.kpi-lbl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px;}
+.kpi-val{font-size:22px;font-weight:700;margin-bottom:3px;}
+.kpi-sub{font-size:11px;color:var(--soft);}
+.c-teal{color:var(--teal);}
+.c-green{color:var(--green);}
+.c-red{color:var(--red);}
+.c-amber{color:var(--amber);}
+.c-charcoal{color:var(--charcoal);}
+
+/* ── GRID ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px;}
+
+/* ── UPLOAD ── */
+.upload-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:130px;border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;background:var(--white);}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--teal);background:var(--teal-bg);}
+.upload-zone.done{border-color:var(--green);border-style:solid;background:var(--green-bg);}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.up-icon{font-size:26px;margin-bottom:8px;}
+.up-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;}
+.up-hint{font-size:12px;color:var(--soft);}
+.up-done{font-size:12px;color:var(--green);font-weight:600;}
+
+/* ── SETTINGS ── */
+.settings-row{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;padding:16px;background:var(--light);border-radius:10px;border:1px solid var(--border);}
+.sg{display:flex;flex-direction:column;gap:5px;}
+.sg-lbl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;}
+.sg-inp{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:7px 11px;color:var(--charcoal);font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border-color 0.2s;}
+.sg-inp:focus{border-color:var(--teal);}
+.run-btn{background:var(--teal);color:white;border:none;border-radius:9px;padding:10px 24px;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 10px rgba(0,155,141,0.3);}
+.run-btn:hover{background:var(--teal2);}
+.run-btn:disabled{opacity:0.35;cursor:not-allowed;box-shadow:none;}
+
+/* ── TABLE ── */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{background:#f8fafc;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody tr{border-bottom:1px solid #f0f4f8;transition:background 0.1s;}
+tbody tr:hover{background:#f7f9ff;}
+tbody td{padding:10px 14px;color:#334155;white-space:nowrap;}
+.td-mono{font-family:monospace;font-size:11px;color:var(--muted);}
+.td-name{color:var(--charcoal);font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;}
+.td-num{font-weight:600;font-variant-numeric:tabular-nums;}
+.td-pos{color:var(--green);}
+.td-neg{color:var(--red);}
+.td-zero{color:var(--soft);}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.b-over{background:var(--green-bg);color:var(--green);}
+.b-under{background:var(--red-bg);color:var(--red);}
+.b-within{background:var(--light);color:var(--muted);}
+.b-unfore{background:var(--amber-bg);color:var(--amber);}
+.db{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:0.04em;}
+.db-erthc{background:#ede9fe;color:#5b21b6;}
+.db-drbps{background:#fef9c3;color:#854d0e;}
+.db-msd{background:#ffedd5;color:#9a3412;}
+.db-poi{background:#ccfbf1;color:#065f46;}
+.db-lease{background:#f3e8ff;color:#6b21a8;}
+.db-dig{background:#fce7f3;color:#9d174d;}
+.db-sw{background:#dcfce7;color:#14532d;}
+.db-aiml{background:#fee2e2;color:#991b1b;}
+.db-other{background:var(--light);color:var(--muted);}
+
+/* ── DEPT TABS ── */
+.dept-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--border);background:#fafbfc;}
+.dt{background:var(--white);border:1px solid var(--border);border-radius:7px;padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s;color:var(--muted);}
+.dt:hover{border-color:var(--teal);color:var(--teal);}
+.dt.active{background:var(--teal);border-color:var(--teal);color:white;}
+
+/* ── DEPT BARS ── */
+.dept-bar-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f0f4f8;}
+.dept-bar-row:last-child{border-bottom:none;}
+.dbn{font-size:12px;font-weight:600;color:var(--charcoal);width:80px;flex-shrink:0;}
+.bar-track{flex:1;height:7px;background:var(--light);border-radius:4px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;}
+.bar-pos{background:var(--green);}
+.bar-neg{background:var(--red);}
+.dbv{font-size:12px;font-weight:700;width:65px;text-align:right;}
+
+/* ── SUMMARY TABLE (matches screenshot) ── */
+.sum-table{width:100%;border-collapse:collapse;font-size:13px;}
+.sum-table thead th{background:#2e75b6;color:white;padding:10px 14px;text-align:center;font-weight:700;font-size:12px;border:1px solid #1f5a96;}
+.sum-table thead th:first-child{text-align:left;}
+.sum-table tbody tr{background:#fce4d6;}
+.sum-table tbody tr:hover{background:#f8cdb8;}
+.sum-table tbody td{padding:9px 14px;border:1px solid #f0c8b0;font-size:13px;color:var(--charcoal);}
+.sum-table tbody td:not(:first-child){text-align:center;font-weight:600;}
+.sum-table .td-pos-sum{color:var(--green);}
+.sum-table .td-neg-sum{color:var(--red);}
+.sum-total{background:#2e75b6 !important;}
+.sum-total td{color:white !important;font-weight:700 !important;border-color:#1f5a96 !important;}
+.remarks-cell{font-size:12px;font-style:italic;color:#555;text-align:left !important;font-weight:400 !important;max-width:280px;}
+.remarks-input{width:100%;border:1px solid #f0c8b0;border-radius:5px;padding:4px 8px;font-size:12px;font-family:'Inter',sans-serif;background:transparent;outline:none;}
+.remarks-input:focus{border-color:var(--teal);}
+
+/* ── CHART BUILDER ── */
+.chart-builder{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px;}
+.chart-options{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.chart-opt{padding:8px 16px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;color:var(--muted);}
+.chart-opt:hover{border-color:var(--teal);color:var(--teal);}
+.chart-opt.sel{background:var(--teal);border-color:var(--teal);color:white;}
+.chart-display{background:var(--light);border-radius:10px;padding:20px;min-height:300px;display:flex;align-items:center;justify-content:center;}
+
+/* ── BANNERS ── */
+.banner{border-radius:10px;padding:11px 16px;font-size:13px;display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.banner.amber{background:var(--amber-bg);border:1px solid var(--amber-bd);color:#92400e;}
+.banner.blue{background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue);}
+.banner.green{background:var(--green-bg);border:1px solid var(--green-bd);color:#166534;}
+.banner.teal{background:var(--teal-bg);border:1px solid var(--teal-bd);color:var(--teal2);}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:60px 20px;}
+.es-icon{font-size:42px;margin-bottom:14px;}
+.es-title{font-size:16px;font-weight:700;color:var(--muted);margin-bottom:6px;}
+.es-sub{font-size:13px;color:var(--soft);line-height:1.6;margin-bottom:20px;}
+.es-btn{background:var(--teal);color:white;border:none;border-radius:9px;padding:10px 24px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+
+/* ── EMAIL PREVIEW ── */
+.email-pre{background:var(--light);border:1px solid var(--border);border-radius:9px;padding:18px;font-size:13px;color:#334155;line-height:1.75;white-space:pre-wrap;font-family:'Inter',sans-serif;max-height:380px;overflow-y:auto;}
+
+/* ── HISTORY ── */
+.hist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+.hist-card{background:var(--white);border:1px solid var(--border);border-radius:11px;padding:16px 18px;transition:all 0.2s;}
+.hist-card:hover{border-color:var(--teal);box-shadow:0 4px 14px rgba(0,155,141,0.1);}
+.hc-month{font-size:15px;font-weight:700;color:var(--charcoal);margin-bottom:3px;}
+.hc-date{font-size:11px;color:var(--soft);margin-bottom:12px;}
+.hc-kpi{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;}
+.hc-lbl{color:var(--muted);}
+.hc-val{font-weight:700;}
+.hc-actions{display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+.hc-btn{font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--muted);background:var(--white);font-family:'Inter',sans-serif;transition:all 0.2s;}
+.hc-btn:hover{border-color:var(--teal);color:var(--teal);}
+.hc-btn.del:hover{border-color:var(--red);color:var(--red);}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--charcoal);border-radius:9px;padding:11px 18px;font-size:13px;color:white;z-index:999;transform:translateY(20px);opacity:0;transition:all 0.3s;pointer-events:none;max-width:320px;}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* ── LOADING ── */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(247,248,250,0.9);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:14px;backdrop-filter:blur(4px);}
+.loading-overlay.show{display:flex;}
+.spin{width:38px;height:38px;border:3px solid rgba(0,155,141,0.2);border-top-color:var(--teal);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{color:var(--muted);font-size:14px;font-weight:500;}
+
+@media(max-width:768px){.kpi-row{grid-template-columns:1fr 1fr;}.two-col,.three-col{grid-template-columns:1fr;}.sidebar{display:none;}}
+
+.tbl-controls{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);background:#fafbfc;flex-wrap:wrap;}
+.tbl-search{flex:1;min-width:180px;max-width:260px;padding:7px 11px 7px 32px;border:1px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:12px;outline:none;background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%2394a3b8' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 10px center;}
+.tbl-search:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(13,148,136,0.08);}
+.tbl-filter-sel{padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:12px;outline:none;background:white;cursor:pointer;color:var(--navy);}
+.tbl-filter-sel:focus{border-color:var(--teal);}
+.filter-pills{display:flex;gap:5px;flex-wrap:wrap;}
+.fpill{padding:5px 11px;border-radius:20px;border:1.5px solid var(--border);font-size:11px;font-weight:600;cursor:pointer;background:white;color:var(--muted);transition:all 0.15s;white-space:nowrap;}
+.fpill:hover{border-color:var(--teal);color:var(--teal);}
+.fpill.fp-all.active{background:var(--navy);border-color:var(--navy);color:white;}
+.fpill.fp-over.active{background:#dcfce7;border-color:#16a34a;color:#15803d;}
+.fpill.fp-under.active{background:#fee2e2;border-color:#dc2626;color:#b91c1b;}
+.fpill.fp-within.active{background:#f0fdf4;border-color:#86efac;color:#166534;}
+.fpill.fp-fc.active{background:#eff6ff;border-color:#60a5fa;color:#1d4ed8;}
+.tbl-divider{width:1px;height:24px;background:var(--border);margin:0 2px;}
+.tbl-count{font-size:11px;color:var(--muted);margin-left:auto;white-space:nowrap;background:#f1f5f9;padding:4px 10px;border-radius:20px;}
+.tbl-clear{font-size:11px;color:var(--teal);cursor:pointer;text-decoration:underline;white-space:nowrap;}
+.tbl-clear:hover{color:var(--navy);}
+thead th{cursor:pointer;user-select:none;}
+thead th:hover{background:#f0f4f8;}
+.sort-asc::after{content:' ▲';color:var(--teal);font-size:10px;}
+.sort-desc::after{content:' ▼';color:var(--teal);font-size:10px;}
+.no-rows{text-align:center;padding:36px;color:var(--soft);font-size:13px;}
+.chart-opt{padding:7px 14px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s;color:var(--muted);background:var(--white);}
+.chart-opt:hover{border-color:var(--teal);color:var(--teal);}
+.chart-opt.sel{background:var(--teal);border-color:var(--teal);color:white;}
+.remarks-auto{font-style:italic;color:var(--muted);font-size:12px;}
+.remarks-inp{width:100%;border:1px solid transparent;border-radius:4px;padding:3px 6px;font-size:12px;font-family:'Inter',sans-serif;background:transparent;outline:none;}
+.remarks-inp:focus{border-color:var(--teal);background:white;}</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spin"></div>
+  <div class="loading-text" id="loadingText">Analysing…</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="t-left">
+    <img src="https://www.mobiusservices.com/img/mobius_logo.svg" class="logo-img" onerror="this.style.display='none'" alt="Mobius">
+    <div class="logo-div"></div>
+    <div class="app-label">Rev<span>Sync</span></div>
+  </div>
+  <div class="t-right">
+    <div class="user-pill">
+      <div class="uavatar" id="uavatar">U</div>
+      <span class="uname" id="uname">User</span>
+    </div>
+    <button class="signout-btn" onclick="logout()">Sign out</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-text">Rev<span>Sync</span></div>
+      <div class="sb-logo-sub">Revenue Variance Intelligence</div>
+    </div>
+
+    <div class="sb-sect">Workflow</div>
+    <div class="sb-item active" id="sb-upload"       onclick="nav('upload')">      <span class="sb-icon">📁</span> Upload &amp; Run</div>
+    <div class="sb-item"        id="sb-overview"     onclick="nav('overview')">    <span class="sb-icon">⊞</span> Overview</div>
+    <div class="sb-item"        id="sb-summary"      onclick="nav('summary')">     <span class="sb-icon">📋</span> Summary Table</div>
+
+    <div class="sb-sect">Analysis</div>
+    <div class="sb-item"        id="sb-variance"     onclick="nav('variance')">    <span class="sb-icon">↕</span> Variance Table</div>
+    <div class="sb-item"        id="sb-alerts"       onclick="nav('alerts')">      <span class="sb-icon">⚠</span> Alerts <span class="sb-badge" id="alertCount" style="display:none">0</span></div>
+    <div class="sb-item"        id="sb-unforecasted" onclick="nav('unforecasted')"><span class="sb-icon">⚡</span> Unforecasted</div>
+
+    <div class="sb-sect">Visuals</div>
+    <div class="sb-item"        id="sb-charts"       onclick="nav('charts')">      <span class="sb-icon">📈</span> Create Chart</div>
+
+    <div class="sb-sect">Share &amp; Export</div>
+    <div class="sb-item"        id="sb-email"        onclick="nav('email')">       <span class="sb-icon">✉</span> Email Summary</div>
+    <div class="sb-item"        id="sb-download"     onclick="nav('download')">    <span class="sb-icon">⬇</span> Download</div>
+
+    <div class="sb-sect">History</div>
+    <div class="hist-list" id="histList"><div class="hist-empty">No saved months</div></div>
+    <div class="sb-item"        id="sb-history"      onclick="nav('history')">     <span class="sb-icon">📅</span> All History</div>
+
+    <div class="sb-spacer"></div>
+    <div class="sb-foot" onclick="logout()">Sign out</div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="page-bar">
+      <div>
+        <div class="page-title" id="pageTitle">Upload &amp; Run</div>
+        <div class="page-sub"   id="pageSub">Start here — upload your monthly files and run analysis</div>
+      </div>
+      <div id="pageActions"></div>
+    </div>
+    <div class="content" id="mainContent"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════
+var SHEETS_CFG = {
+  SHEET_ID:'YOUR_SHEET_ID', API_KEY:'YOUR_SHEETS_API_KEY',
+  SCRIPT_URL:'YOUR_APPS_SCRIPT_URL', TAB:'RevSync_History'
+};
+
+var MONTH_NAMES = {1:'January',2:'February',3:'March',4:'April',5:'May',6:'June',
+  7:'July',8:'August',9:'September',10:'October',11:'November',12:'December'};
+var MONTH_COL = {4:7,5:8,6:9,7:10,8:11,9:12,10:13,11:14,12:15,1:16,2:17,3:18};
+var DEPTS = ['eRTHC','DR-BPS','MSD','POI','Lease','DIG','Software','AIML'];
+var DEPT_COLORS = {'eRTHC':'#6366f1','DR-BPS':'#eab308','MSD':'#f97316',
+  'POI':'#14b8a6','Lease':'#a855f7','DIG':'#ec4899','Software':'#22c55e','AIML':'#ef4444'};
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+var S = {
+  billingWb:null, billingName:'', forecastWb:null, forecastName:'',
+  result:null, currentMonth:2, threshold:1000,
+  history:[], viewingHist:null, sheetsReady:false,
+  chartInstances:[],
+  remarksAuto:{}, remarksCustom:{},
+  chartType:'bar', chartMetric:'variance_dept', chartDept:'ALL',
+  tblSort:{col:-1,dir:1}, tblSearch:'', tblDeptFilter:'ALL', tblStatusFilter:'ALL', tblForecastOnly:false, tblVarDir:'ALL',
+  selectedChartType:'bar', selectedChartMetric:'variance_dept',
+};
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+window.onload = function() {
+  var u = sessionStorage.getItem('revsync_user');
+  if (!u) { window.location.href='index.html'; return; }
+  var user = JSON.parse(u);
+  document.getElementById('uname').textContent = user.name.split(' ')[0];
+  var av = document.getElementById('uavatar');
+  if (user.picture) { av.innerHTML='<img src="'+user.picture+'">'; }
+  else { av.textContent = user.name[0].toUpperCase(); }
+  S.sheetsReady = SHEETS_CFG.SHEET_ID!=='YOUR_SHEET_ID' && SHEETS_CFG.API_KEY!=='YOUR_SHEETS_API_KEY';
+  loadHistory();
+  nav('upload');
+};
+
+function logout() { sessionStorage.removeItem('revsync_user'); window.location.href='index.html'; }
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+function nav(page) {
+  document.querySelectorAll('.sb-item').forEach(function(el){el.classList.remove('active');});
+  var sb = document.getElementById('sb-'+page);
+  if (sb) sb.classList.add('active');
+
+  var titles = {
+    upload:       ['Upload & Run',         'Upload billing advice and forecast files, then run analysis'],
+    overview:     ['Overview',             'Summary dashboard of your latest variance analysis'],
+    summary:      ['Summary Table',        'Division-wise revenue summary with remarks — matches your report format'],
+    variance:     ['Variance Table',       'Full project-wise comparison — Actual vs Forecast by department'],
+    alerts:       ['Variance Alerts',      'Projects where absolute variance exceeds your threshold'],
+    unforecasted: ['Unforecasted Revenue', 'Billed projects with no matching forecast entry'],
+    charts:       ['Create Chart',         'Build custom charts from your variance data'],
+    email:        ['Email Summary',        'Send or copy your variance report via Gmail'],
+    download:     ['Download',             'Export analysis by department or full report as Excel'],
+    history:      ['Monthly History',      'Browse and revisit past monthly analyses'],
+  };
+  var t = titles[page] || ['RevSync',''];
+  document.getElementById('pageTitle').textContent = t[0];
+  document.getElementById('pageSub').textContent   = t[1];
+  document.getElementById('pageActions').innerHTML = '';
+
+  // Destroy old charts
+  S.chartInstances.forEach(function(c){try{c.destroy();}catch(e){}});
+  S.chartInstances = [];
+
+  if      (page==='upload')       pageUpload();
+  else if (page==='overview')     pageOverview();
+  else if (page==='summary')      pageSummary();
+  else if (page==='variance')     pageVariance();
+  else if (page==='alerts')       pageAlerts();
+  else if (page==='unforecasted') pageUnforecasted();
+  else if (page==='charts')       pageCharts();
+  else if (page==='email')        pageEmail();
+  else if (page==='download')     pageDownload();
+  else if (page==='history')      pageHistory();
+}
+
+function setContent(html) { document.getElementById('mainContent').innerHTML = html; }
+
+function noAnalysis() {
+  setContent(
+    '<div class="empty-state">'+
+    '<div class="es-icon">📊</div>'+
+    '<div class="es-title">No analysis yet</div>'+
+    '<div class="es-sub">Upload your monthly billing advice and forecast files,<br>then click Run Analysis to get started.</div>'+
+    '<button class="es-btn" onclick="nav(\'upload\')">📁 Go to Upload & Run</button>'+
+    '</div>'
+  );
+}
+
+// ══════════════════════════════════════════
+// PAGE: UPLOAD & RUN
+// ══════════════════════════════════════════
+function pageUpload() {
+  var bFilled = S.billingWb ? 'done' : '';
+  var fFilled = S.forecastWb ? 'done' : '';
+  var monthOpts = Object.keys(MONTH_NAMES).map(function(k){
+    return '<option value="'+k+'"'+(parseInt(k)===S.currentMonth?' selected':'')+'>'+MONTH_NAMES[k]+'</option>';
+  }).join('');
+  var readyBanner = S.result ?
+    '<div class="banner green" style="justify-content:space-between;">'+
+    '<span>✅ Analysis ready — <strong>'+MONTH_NAMES[S.currentMonth]+'</strong> loaded. Navigate using the sidebar.</span>'+
+    '<button class="btn pri" onclick="nav(\'overview\')">View Overview →</button></div>' : '';
+
+  setContent(
+    '<div class="card">'+
+      '<div class="card-head"><div class="card-title">Step 1 — Upload Files</div><div class="card-sub">Drag and drop or click to select your Excel files</div></div>'+
+      '<div style="padding:20px;display:flex;flex-direction:column;gap:16px;">'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'+
+          '<div class="upload-zone '+bFilled+'" id="billingZone" ondragover="dzOver(event,\'billingZone\')" ondragleave="dzLeave(event,\'billingZone\')" ondrop="dzDrop(event,\'billing\')">'+
+            '<input type="file" accept=".xlsx,.xls" onchange="fileSelected(event,\'billing\')">'+
+            '<div class="up-icon">'+(S.billingWb?'✅':'📄')+'</div>'+
+            '<div class="up-lbl">Billing Advice (Actuals)</div>'+
+            (S.billingWb?'<div class="up-done">✓ '+S.billingName+'</div>':'<div class="up-hint">Click or drag your .xlsx here</div>')+
+          '</div>'+
+          '<div class="upload-zone '+fFilled+'" id="forecastZone" ondragover="dzOver(event,\'forecastZone\')" ondragleave="dzLeave(event,\'forecastZone\')" ondrop="dzDrop(event,\'forecast\')">'+
+            '<input type="file" accept=".xlsx,.xls" onchange="fileSelected(event,\'forecast\')">'+
+            '<div class="up-icon">'+(S.forecastWb?'✅':'📊')+'</div>'+
+            '<div class="up-lbl">Revenue Forecast</div>'+
+            (S.forecastWb?'<div class="up-done">✓ '+S.forecastName+'</div>':'<div class="up-hint">Click or drag your .xlsx here</div>')+
+          '</div>'+
+        '</div>'+
+        '<div style="height:1px;background:var(--border);"></div>'+
+        '<div class="card-title" style="font-size:12px;">Step 2 — Configure</div>'+
+        '<div class="settings-row">'+
+          '<div class="sg"><div class="sg-lbl">Billing Month</div>'+
+            '<select class="sg-inp" id="monthSel" style="width:140px;">'+monthOpts+'</select></div>'+
+          '<div class="sg"><div class="sg-lbl">Fiscal Year</div>'+
+            '<select class="sg-inp" id="fySel" style="width:120px;"><option value="2526">FY 25-26</option><option value="2627">FY 26-27</option></select></div>'+
+          '<div class="sg"><div class="sg-lbl">Variance Threshold (USD)</div>'+
+            '<input type="number" class="sg-inp" id="threshInp" value="'+S.threshold+'" min="0" step="100" style="width:160px;"></div>'+
+          '<button class="run-btn" onclick="runAnalysis()" '+(S.billingWb&&S.forecastWb?'':'disabled')+'>⚡ Run Analysis</button>'+
+        '</div>'+
+        readyBanner+
+      '</div>'+
+    '</div>'
+  );
+}
+
+// ══════════════════════════════════════════
+// PAGE: OVERVIEW
+// ══════════════════════════════════════════
+function pageOverview() {
+  if (!S.result) { noAnalysis(); return; }
+  var r = S.result;
+  var vc = r.totalVariance>=0 ? 'c-green' : 'c-red';
+  var vs = r.totalVariance>=0 ? '+' : '';
+
+  var histBanner = '';
+  if (S.viewingHist) {
+    histBanner = '<div class="banner blue" style="justify-content:space-between;margin-bottom:16px;">'+
+      '<span>📅 Viewing: <strong>'+S.viewingHist.monthLabel+'</strong> — saved on '+S.viewingHist.savedOn+'</span>'+
+      '<button class="btn" onclick="S.viewingHist=null;nav(\'overview\')">✕ Close</button></div>';
+  }
+
+  // Dept bars
+  var depts = uniqueDepts(r.matched);
+  var maxAbs = Math.max.apply(null, depts.map(function(d){
+    return Math.abs(r.matched.filter(function(x){return x.dept===d;}).reduce(function(s,x){return s+x.variance;},0));
+  }).concat([1]));
+
+  var deptBarsHtml = depts.map(function(d) {
+    var rows = r.matched.filter(function(x){return x.dept===d;});
+    var v = rows.reduce(function(s,x){return s+x.variance;},0);
+    var pct = Math.min((Math.abs(v)/maxAbs)*100,100);
+    var col = v>=0?'var(--green)':'var(--red)';
+    return '<div class="dept-bar-row">'+
+      '<div class="dbn">'+d+'</div>'+
+      '<div class="bar-track"><div class="bar-fill '+(v>=0?'bar-pos':'bar-neg')+'" style="width:'+pct+'%"></div></div>'+
+      '<div class="dbv" style="color:'+col+'">'+(v>=0?'+':'')+fmtK(v)+'</div></div>';
+  }).join('');
+
+  var topAlerts = r.alerts.slice(0,6).map(function(a){
+    var col = a.variance>=0?'var(--green)':'var(--red)';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f4f8;">'+
+      '<div style="width:7px;height:7px;border-radius:50%;background:'+col+';flex-shrink:0;"></div>'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="font-size:11px;color:var(--muted);font-family:monospace;">'+a.projectId+'</div>'+
+        '<div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(a.projectName||'—')+'</div>'+
+      '</div>'+
+      '<div style="font-size:12px;font-weight:700;color:'+col+';">'+(a.variance>=0?'+':'')+fmt(a.variance)+'</div></div>';
+  }).join('') || '<div style="padding:20px;text-align:center;color:var(--soft);font-size:13px;">✅ No alerts — all within threshold</div>';
+
+  setContent(
+    histBanner+
+    '<div class="kpi-row">'+
+      '<div class="kpi k-teal"><div class="kpi-lbl">Total Actual Revenue</div><div class="kpi-val c-teal">'+fmt(r.totalActual)+'</div><div class="kpi-sub">From billing advice</div></div>'+
+      '<div class="kpi k-amber"><div class="kpi-lbl">Total Forecast</div><div class="kpi-val c-charcoal">'+fmt(r.totalForecast)+'</div><div class="kpi-sub">'+MONTH_NAMES[S.currentMonth]+' forecast</div></div>'+
+      '<div class="kpi '+(r.totalVariance>=0?'k-green':'k-red')+'"><div class="kpi-lbl">Net Variance</div><div class="kpi-val '+vc+'">'+vs+fmt(r.totalVariance)+'</div><div class="kpi-sub">Actual minus forecast</div></div>'+
+      '<div class="kpi k-red"><div class="kpi-lbl">Projects Above Threshold</div><div class="kpi-val c-red">'+r.alerts.length+'</div><div class="kpi-sub">Above $'+Number(S.threshold).toLocaleString()+'</div></div>'+
+    '</div>'+
+    '<div class="two-col">'+
+      '<div class="card"><div class="card-head"><div><div class="card-title">Department Variance</div><div class="card-sub">Over / under forecast</div></div><button class="btn" onclick="nav(\'charts\')">Create chart →</button></div><div style="padding:12px 18px;">'+deptBarsHtml+'</div></div>'+
+      '<div class="card"><div class="card-head"><div><div class="card-title">Top Alerts</div><div class="card-sub">'+r.alerts.length+' projects above threshold</div></div><button class="btn" onclick="nav(\'alerts\')">View all →</button></div><div style="padding:4px 18px;">'+topAlerts+'</div></div>'+
+    '</div>'+
+    '<div class="banner teal" style="cursor:pointer;" onclick="nav(\'summary\')">'+
+      '📋 <strong>Summary Table ready</strong> — View your division-wise revenue summary with remarks and download as Excel →'+
+    '</div>'
+  );
+}
+
+// ══════════════════════════════════════════
+// PAGE: SUMMARY TABLE
+// ══════════════════════════════════════════
+function pageSummary() {
+  if (!S.result) { noAnalysis(); return; }
+  var r = S.result;
+  var depts = uniqueDepts(r.matched);
+  var rows = depts.map(function(d) {
+    var items = r.matched.filter(function(x){return x.dept===d;});
+    var revenue = items.reduce(function(s,x){return s+x.actual;},0);
+    var forecast = items.reduce(function(s,x){return s+x.forecast;},0);
+    var variance = revenue - forecast;
+    var topProj = items.slice().sort(function(a,b){return Math.abs(b.variance)-Math.abs(a.variance);}).slice(0,2);
+    S.remarksAuto[d] = topProj.filter(function(p){return Math.abs(p.variance)>0;}).map(function(p){
+      return (p.projectName||p.projectId)+' '+(p.variance>=0?'+':'')+fmtK(p.variance);
+    }).join(', ');
+    return {division:d, revenue:revenue, forecast:forecast, variance:variance};
+  });
+  var totalR = rows.reduce(function(s,r){return s+r.revenue;},0);
+  var totalF = rows.reduce(function(s,r){return s+r.forecast;},0);
+  var totalV = totalR - totalF;
+  var tbody = rows.map(function(row) {
+    var vc = row.variance>0?'sum-td-pos':row.variance<0?'sum-td-neg':'';
+    var vs = row.variance>=0?'+':'';
+    var d = row.division;
+    return '<tr>'+
+      '<td style="font-weight:600;">'+d+'</td>'+
+      '<td>'+fmt(row.revenue)+'</td>'+
+      '<td>'+fmt(row.forecast)+'</td>'+
+      '<td class="'+vc+'">'+vs+fmt(row.variance)+'</td>'+
+      '<td class="remarks-cell"><span class="remarks-auto">'+(S.remarksAuto[d]||'')+'</span></td>'+
+      '<td class="remarks-cell"><input class="remarks-inp" type="text" placeholder="Custom remarks..." value="'+(S.remarksCustom[d]||'')+'" onchange="S.remarksCustom[\''+d+'\']=this.value" oninput="S.remarksCustom[\''+d+'\']=this.value"></td>'+
+    '</tr>';
+  }).join('');
+  var tvs = totalV>=0?'+':''; var tvc = totalV>=0?'sum-td-pos':'sum-td-neg';
+  setContent(
+    '<div class="banner teal">Auto remarks show top project variances. Add custom notes in the last column.</div>'+
+    '<div class="card">'+
+      '<div class="card-head">'+
+        '<div><div class="card-title">Revenue Summary - '+MONTH_NAMES[S.currentMonth]+'</div><div class="card-sub">Division-wise actual vs forecast</div></div>'+
+        '<div class="card-actions">'+
+          '<button class="btn xlsx" onclick="downloadSummaryExcel()">Excel</button>'+
+          '<button class="btn gmail" onclick="gmailSummaryTable()">Send via Gmail</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="padding:16px;"><table class="sum-table">'+
+        '<thead><tr><th>Division</th><th>Revenue</th><th>Forecast (excl internal)</th><th>Variance</th><th>Auto Remarks</th><th>Additional Remarks</th></tr></thead>'+
+        '<tbody>'+tbody+
+          '<tr class="sum-total"><td>Services TOTAL</td><td>'+fmt(totalR)+'</td><td>'+fmt(totalF)+'</td>'+
+          '<td class="'+tvc+'">'+tvs+fmt(totalV)+'</td><td colspan="2"></td></tr>'+
+        '</tbody></table></div>'+
+    '</div>'
+  );
+}
+function gmailSummaryTable() {
+  var r = S.result;
+  var depts = uniqueDepts(r.matched);
+  var rows = depts.map(function(d) {
+    var items = r.matched.filter(function(x){return x.dept===d;});
+    var rev  = items.reduce(function(s,x){return s+x.actual;},0);
+    var fore = items.reduce(function(s,x){return s+x.forecast;},0);
+    return {division:d, revenue:rev, forecast:fore, variance:rev-fore};
+  });
+  var totalR = rows.reduce(function(s,r){return s+r.revenue;},0);
+  var totalF = rows.reduce(function(s,r){return s+r.forecast;},0);
+  var totalV = totalR - totalF;
+  var user   = JSON.parse(sessionStorage.getItem('revsync_user')||'{}');
+  var mName  = MONTH_NAMES[S.currentMonth]||'Monthly';
+  var today  = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+
+  // Build HTML table string
+  var tbl = '<table border="1" cellpadding="9" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;width:100%;max-width:800px;">'+
+    '<thead><tr>'+
+    '<th style="background:#2e75b6;color:white;text-align:left;border:1px solid #1f5a96;padding:10px 14px;">Division</th>'+
+    '<th style="background:#2e75b6;color:white;text-align:center;border:1px solid #1f5a96;padding:10px 14px;">Revenue</th>'+
+    '<th style="background:#2e75b6;color:white;text-align:center;border:1px solid #1f5a96;padding:10px 14px;">Forecast (excl internal)</th>'+
+    '<th style="background:#2e75b6;color:white;text-align:center;border:1px solid #1f5a96;padding:10px 14px;">Variance</th>'+
+    '<th style="background:#2e75b6;color:white;text-align:left;border:1px solid #1f5a96;padding:10px 14px;">Remarks</th>'+
+    '</tr></thead><tbody>';
+
+  rows.forEach(function(row) {
+    var vc  = row.variance > 0 ? 'color:#16a34a;' : row.variance < 0 ? 'color:#dc2626;' : '';
+    var vs  = row.variance >= 0 ? '+' : '';
+    var combined = [S.remarksAuto[row.division]||'', S.remarksCustom[row.division]||''].filter(Boolean).join(' | ');
+    tbl += '<tr style="background:#fce4d6;">'+
+      '<td style="border:1px solid #f0c8b0;font-weight:600;padding:9px 14px;">'+row.division+'</td>'+
+      '<td style="border:1px solid #f0c8b0;text-align:center;padding:9px 14px;">'+fmt(row.revenue)+'</td>'+
+      '<td style="border:1px solid #f0c8b0;text-align:center;padding:9px 14px;">'+fmt(row.forecast)+'</td>'+
+      '<td style="border:1px solid #f0c8b0;text-align:center;font-weight:700;padding:9px 14px;'+vc+'">'+vs+fmt(row.variance)+'</td>'+
+      '<td style="border:1px solid #f0c8b0;font-style:italic;font-size:12px;padding:9px 14px;">'+combined+'</td>'+
+    '</tr>';
+  });
+
+  var tvs  = totalV >= 0 ? '+' : '';
+  var tvc2 = totalV > 0 ? 'color:#16a34a;' : totalV < 0 ? 'color:#dc2626;' : '';
+  tbl += '<tr style="background:#2e75b6;">'+
+    '<td style="border:1px solid #1f5a96;color:white;font-weight:700;padding:9px 14px;">Services TOTAL</td>'+
+    '<td style="border:1px solid #1f5a96;color:white;font-weight:700;text-align:center;padding:9px 14px;">'+fmt(totalR)+'</td>'+
+    '<td style="border:1px solid #1f5a96;color:white;font-weight:700;text-align:center;padding:9px 14px;">'+fmt(totalF)+'</td>'+
+    '<td style="border:1px solid #1f5a96;font-weight:700;text-align:center;padding:9px 14px;'+tvc2+'">'+tvs+fmt(totalV)+'</td>'+
+    '<td style="border:1px solid #1f5a96;"></td>'+
+  '</tr></tbody></table>';
+
+  var greeting = 'Hi,\n\nPlease find the '+mName+' Revenue Variance Summary below.\n\n';
+  var sign     = '\n\nRegards,\n'+(user.name||'RevSync Team')+' | Mobius Knowledge Services | '+today;
+  var fullHtml = '<p>Hi,</p><p>Please find the '+mName+' Revenue Variance Summary below.</p>'+tbl+'<p>Regards,<br>'+(user.name||'RevSync Team')+' | Mobius Knowledge Services | '+today+'</p>';
+
+  // Open Gmail FIRST (synchronous — must happen directly from click to avoid popup blocker)
+  var sub = encodeURIComponent(mName+' Revenue Variance Summary — Mobius Group');
+  var gmailWin = window.open('https://mail.google.com/mail/?view=cm&fs=1&su='+sub, '_blank');
+  if (!gmailWin) {
+    showToast('⚠ Popup blocked — allow popups for this site and try again.');
+    return;
+  }
+
+  // Then copy the formatted table to clipboard (async is fine now — tab already opened)
+  var clipItem = new ClipboardItem({
+    'text/html':  new Blob([fullHtml], {type:'text/html'}),
+    'text/plain': new Blob([greeting+mName+' summary — see attached.\n'+sign], {type:'text/plain'}),
+  });
+  navigator.clipboard.write([clipItem]).then(function() {
+    showGmailInstructions();
+  }).catch(function(err) {
+    console.warn('ClipboardItem not supported, falling back:', err);
+    navigator.clipboard.writeText(greeting+'[Paste table here from RevSync]\n'+sign).catch(function(){});
+    showToast('Gmail opened — table copy failed, paste manually');
+  });
+}
+
+function showGmailInstructions() {
+  // Show a brief overlay instruction on how to paste
+  var overlay = document.createElement('div');
+  overlay.id = 'gmailTip';
+  overlay.style.cssText = 'position:fixed;bottom:80px;right:24px;background:#0a2342;color:white;border-radius:12px;padding:16px 20px;font-family:Inter,sans-serif;font-size:13px;z-index:9999;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.4);';
+  overlay.innerHTML =
+    '<div style="font-weight:700;margin-bottom:8px;color:#5ee8de;">📋 Table copied!</div>'+
+    '<div style="line-height:1.6;color:rgba(255,255,255,0.85);">'+
+    '1. Gmail has opened in a new tab<br>'+
+    '2. Click in the email body<br>'+
+    '3. Press <strong>Ctrl+V</strong> (or ⌘V on Mac)<br>'+
+    '4. The formatted table will appear ✅'+
+    '</div>'+
+    '<button onclick="document.getElementById(\'gmailTip\').remove()" '+
+    'style="margin-top:12px;background:rgba(255,255,255,0.15);border:none;color:white;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:Inter,sans-serif;font-size:12px;width:100%;">Got it</button>';
+  document.body.appendChild(overlay);
+  // Auto-remove after 15 seconds
+  setTimeout(function(){ var el=document.getElementById('gmailTip'); if(el) el.remove(); }, 15000);
+}
+
+function gmailChart() {
+  var r     = S.result;
+  var dept  = S.chartDept;
+  var depts = uniqueDepts(r.matched);
+  var user  = JSON.parse(sessionStorage.getItem('revsync_user')||'{}');
+  var mName = MONTH_NAMES[S.currentMonth]||'Monthly';
+  var today = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  var dL    = dept==='ALL' ? 'All Departments' : dept;
+
+  // Build the HTML table
+  var tbl = '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:12px;max-width:700px;">';
+
+  if (dept === 'ALL') {
+    tbl += '<thead><tr>'+
+      '<th style="background:#2e75b6;color:white;border:1px solid #1f5a96;padding:9px 13px;">Department</th>'+
+      '<th style="background:#2e75b6;color:white;border:1px solid #1f5a96;padding:9px 13px;">Actual</th>'+
+      '<th style="background:#2e75b6;color:white;border:1px solid #1f5a96;padding:9px 13px;">Forecast</th>'+
+      '<th style="background:#2e75b6;color:white;border:1px solid #1f5a96;padding:9px 13px;">Variance</th>'+
+    '</tr></thead><tbody>';
+    depts.forEach(function(d) {
+      var items = r.matched.filter(function(x){return x.dept===d;});
+      var act  = items.reduce(function(s,x){return s+x.actual;},0);
+      var fore = items.reduce(function(s,x){return s+x.forecast;},0);
+      var v    = act - fore;
+      var vc   = v>=0 ? 'color:#16a34a;' : 'color:#dc2626;';
+      tbl += '<tr style="background:#fce4d6;">'+
+        '<td style="border:1px solid #f0c8b0;font-weight:600;padding:8px 13px;">'+d+'</td>'+
+        '<td style="border:1px solid #f0c8b0;text-align:center;padding:8px 13px;">'+fmt(act)+'</td>'+
+        '<td style="border:1px solid #f0c8b0;text-align:center;padding:8px 13px;">'+fmt(fore)+'</td>'+
+        '<td style="border:1px solid #f0c8b0;text-align:center;font-weight:700;padding:8px 13px;'+vc+'">'+(v>=0?'+':'')+fmt(v)+'</td>'+
+      '</tr>';
+    });
+  } else {
+    tbl += '<thead><tr>'+
+      '<th style="background:#2e75b6;color:white;border:1px solid #1f5a96;padding:9px 13px;">Project ID</th>'+
+      '<th style="background:#2e75b6;color:white;border:1px solid #1f5a96;padding:9px 13px;">Project Name</th>'+
+      '<th style="background:#2e75b6;color:white;border:1px solid #1f5a96;padding:9px 13px;">Actual</th>'+
+      '<th style="background:#2e75b6;color:white;border:1px solid #1f5a96;padding:9px 13px;">Forecast</th>'+
+      '<th style="background:#2e75b6;color:white;border:1px solid #1f5a96;padding:9px 13px;">Variance</th>'+
+    '</tr></thead><tbody>';
+    var items = r.matched.filter(function(x){return x.dept===dept;})
+      .slice().sort(function(a,b){return Math.abs(b.variance)-Math.abs(a.variance);});
+    items.forEach(function(p) {
+      var vc = p.variance>=0 ? 'color:#16a34a;' : 'color:#dc2626;';
+      tbl += '<tr style="background:#fce4d6;">'+
+        '<td style="border:1px solid #f0c8b0;font-family:monospace;font-size:11px;padding:8px 13px;">'+p.projectId+'</td>'+
+        '<td style="border:1px solid #f0c8b0;padding:8px 13px;">'+(p.projectName||'—')+'</td>'+
+        '<td style="border:1px solid #f0c8b0;text-align:center;padding:8px 13px;">'+fmt(p.actual)+'</td>'+
+        '<td style="border:1px solid #f0c8b0;text-align:center;padding:8px 13px;">'+fmt(p.forecast)+'</td>'+
+        '<td style="border:1px solid #f0c8b0;text-align:center;font-weight:700;padding:8px 13px;'+vc+'">'+(p.variance>=0?'+':'')+fmt(p.variance)+'</td>'+
+      '</tr>';
+    });
+  }
+  tbl += '</tbody></table>';
+
+  var fullHtml = '<p>Hi,</p><p>Please find the '+mName+' Variance Summary for <strong>'+dL+'</strong> below.</p>'+tbl+'<p>Regards,<br>'+(user.name||'RevSync Team')+' | Mobius Knowledge Services | '+today+'</p>';
+
+  var clipItem = new ClipboardItem({
+    'text/html':  new Blob([fullHtml], {type:'text/html'}),
+    'text/plain': new Blob([mName+' Variance — '+dL], {type:'text/plain'}),
+  });
+
+  // Open Gmail FIRST to avoid popup blocker
+  var sub2 = encodeURIComponent(mName+' Variance Summary — '+dL+' — Mobius Group');
+  var gmailWin2 = window.open('https://mail.google.com/mail/?view=cm&fs=1&su='+sub2, '_blank');
+  if (!gmailWin2) { showToast('⚠ Popup blocked — allow popups and try again.'); return; }
+
+  navigator.clipboard.write([clipItem]).then(function() {
+    showGmailInstructions();
+  }).catch(function() {
+    showToast('Gmail opened — table copy failed, paste manually');
+  });
+}
+
+
+
+// ── PAGE: VARIANCE TABLE ─────────────────────────────────────────────────
+function pageVariance() {
+  if (!S.result) { noAnalysis(); return; }
+  renderVarTable();
+}
+function renderVarTable() {
+  var r = S.result;
+  var allRows = r.matched;
+  var depts   = uniqueDepts(allRows);
+
+  // ── Count per status for pill badges ──────────────────────────────────────
+  var cOver    = allRows.filter(function(x){return x.aboveThreshold && x.variance < 0;}).length;
+  var cUnder   = allRows.filter(function(x){return x.aboveThreshold && x.variance > 0;}).length;
+  var cWithin  = allRows.filter(function(x){return !x.aboveThreshold && !x.forecastOnly;}).length;
+  var cFcOnly  = allRows.filter(function(x){return x.forecastOnly;}).length;
+
+  // ── Apply filters ──────────────────────────────────────────────────────────
+  var filtered = allRows.filter(function(x) {
+    // Dept filter
+    if (S.tblDeptFilter !== 'ALL' && x.dept !== S.tblDeptFilter) return false;
+    // Status pill filter
+    if (S.tblStatusFilter === 'Over'   && !(x.aboveThreshold && x.variance < 0)) return false;
+    if (S.tblStatusFilter === 'Under'  && !(x.aboveThreshold && x.variance > 0)) return false;
+    if (S.tblStatusFilter === 'Within' && (x.aboveThreshold || x.forecastOnly))  return false;
+    if (S.tblStatusFilter === 'FcOnly' && !x.forecastOnly)                        return false;
+    // Variance direction quick filter
+    if (S.tblVarDir === 'neg' && x.variance >= 0) return false;
+    if (S.tblVarDir === 'pos' && x.variance <= 0) return false;
+    // Text search
+    var q = S.tblSearch.toLowerCase();
+    if (q) {
+      var hit = (x.projectId   && x.projectId.toLowerCase().includes(q))   ||
+                (x.projectName && x.projectName.toLowerCase().includes(q)) ||
+                (x.customer    && x.customer.toLowerCase().includes(q))    ||
+                (x.dept        && x.dept.toLowerCase().includes(q));
+      if (!hit) return false;
+    }
+    return true;
+  });
+
+  // ── Sort ───────────────────────────────────────────────────────────────────
+  var COLS = ['dept','projectId','projectName','customer','actual','forecast','variance','varPct'];
+  if (S.tblSort.col >= 0 && S.tblSort.col < COLS.length) {
+    var key = COLS[S.tblSort.col];
+    filtered = filtered.slice().sort(function(a,b){
+      var av=a[key], bv=b[key];
+      if (typeof av==='string') av=av.toLowerCase();
+      if (typeof bv==='string') bv=bv.toLowerCase();
+      return av<bv ? -S.tblSort.dir : av>bv ? S.tblSort.dir : 0;
+    });
+  }
+
+  // ── Dept dropdown ─────────────────────────────────────────────────────────
+  var dOpts = '<option value="ALL">All Departments</option>'+
+    depts.map(function(d){
+      var cnt = allRows.filter(function(x){return x.dept===d;}).length;
+      return '<option value="'+d+'"'+(S.tblDeptFilter===d?' selected':'')+'>'+d+' ('+cnt+')</option>';
+    }).join('');
+
+  // ── Variance direction dropdown ───────────────────────────────────────────
+  var vOpts =
+    '<option value="ALL"'+(S.tblVarDir==='ALL'?' selected':'')+'>All Variances</option>'+
+    '<option value="neg"'+(S.tblVarDir==='neg'?' selected':'')+'>Negative only (▼ Under)</option>'+
+    '<option value="pos"'+(S.tblVarDir==='pos'?' selected':'')+'>Positive only (▲ Over)</option>';
+
+  // ── Active filter check (for "clear" button) ──────────────────────────────
+  var hasFilter = S.tblSearch || S.tblDeptFilter!=='ALL' || S.tblStatusFilter!=='ALL' || S.tblVarDir!=='ALL';
+
+  // ── Status pill helper ────────────────────────────────────────────────────
+  function pill(val, label, cls, count) {
+    var active = S.tblStatusFilter === val ? ' active' : '';
+    return '<span class="fpill '+cls+active+'" onclick="S.tblStatusFilter=\''+(S.tblStatusFilter===val?'ALL':val)+'\';renderVarTable()">'+label+'<span style="margin-left:5px;opacity:0.7;font-weight:400;">'+count+'</span></span>';
+  }
+
+  // ── Thead ─────────────────────────────────────────────────────────────────
+  var HDRS = ['Dept','Project ID','Project Name','Customer','Actual (USD)','Forecast (USD)','Variance (USD)','Var %','Status'];
+  var thead = HDRS.map(function(h,i){
+    if (i===8) return '<th style="cursor:default;">'+h+'</th>';
+    var cls = S.tblSort.col===i ? (S.tblSort.dir===1?' class="sort-asc"':' class="sort-desc"') : '';
+    return '<th'+cls+' onclick="S.tblSort.col=='+i+'?S.tblSort.dir*=-1:(S.tblSort.col='+i+',S.tblSort.dir=1);renderVarTable()" title="Click to sort">'+h+'</th>';
+  }).join('');
+
+  // ── Tbody ─────────────────────────────────────────────────────────────────
+  var tbody = filtered.map(function(x) {
+    var vc = x.variance > 0 ? 'td-pos' : x.variance < 0 ? 'td-neg' : 'td-zero';
+    var badge = x.forecastOnly
+      ? '<span class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">📋 Forecast Only</span>'
+      : x.aboveThreshold
+        ? (x.variance >= 0
+            ? '<span class="badge b-over">▲ Over</span>'
+            : '<span class="badge b-under">▼ Under</span>')
+        : '<span class="badge b-within">✓ Within</span>';
+    var rowStyle = x.forecastOnly ? ' style="opacity:0.8;background:#fafcff;"' : '';
+    return '<tr'+rowStyle+'>'+
+      '<td><span class="db '+deptClass(x.dept)+'">'+x.dept+'</span></td>'+
+      '<td class="td-mono">'+x.projectId+'</td>'+
+      '<td class="td-name" title="'+(x.projectName||'')+'">'+(x.projectName||'—')+'</td>'+
+      '<td style="font-size:11px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;">'+(x.customer||'—')+'</td>'+
+      '<td class="td-num">'+(x.actual===0&&x.forecastOnly?'<span style="color:var(--muted)">$0.00</span>':fmt(x.actual))+'</td>'+
+      '<td class="td-num" style="color:var(--muted)">'+fmt(x.forecast)+'</td>'+
+      '<td class="td-num '+vc+'">'+(x.variance>=0?'+':'')+fmt(x.variance)+'</td>'+
+      '<td class="td-num '+vc+'">'+x.varPct.toFixed(1)+'%</td>'+
+      '<td>'+badge+'</td></tr>';
+  }).join('') || '<tr><td colspan="9" class="no-rows">No matching projects — <span class="tbl-clear" onclick="clearVarFilters()">clear filters</span></td></tr>';
+
+  setContent(
+    '<div class="card">'+
+      '<div class="card-head">'+
+        '<div>'+
+          '<div class="card-title">Variance Analysis</div>'+
+          '<div class="card-sub">'+filtered.length+' of '+allRows.length+' projects · Division from forecast file</div>'+
+        '</div>'+
+        '<div class="card-actions">'+
+          '<button class="btn" onclick="dlCSV(\'main\')">CSV</button>'+
+          '<button class="btn xlsx" onclick="dlXLSX(\'main\',S.tblDeptFilter)">Excel</button>'+
+        '</div>'+
+      '</div>'+
+
+      // ── Filter bar ──
+      '<div class="tbl-controls">'+
+        // Search
+        '<input class="tbl-search" type="text" placeholder="Search ID, name, customer..." value="'+S.tblSearch+'" oninput="S.tblSearch=this.value;renderVarTable()">'+
+        '<div class="tbl-divider"></div>'+
+        // Status pills
+        '<div class="filter-pills">'+
+          pill('ALL',    'All',            'fp-all',    allRows.length)+
+          pill('Under',  '▼ Under',        'fp-under',  cUnder)+
+          pill('Over',   '▲ Over',         'fp-over',   cOver)+
+          pill('Within', '✓ Within',       'fp-within', cWithin)+
+          (cFcOnly > 0 ? pill('FcOnly','📋 Forecast Only','fp-fc', cFcOnly) : '')+
+        '</div>'+
+        '<div class="tbl-divider"></div>'+
+        // Dept dropdown
+        '<select class="tbl-filter-sel" onchange="S.tblDeptFilter=this.value;renderVarTable()" title="Filter by department">'+dOpts+'</select>'+
+        // Variance direction dropdown
+        '<select class="tbl-filter-sel" onchange="S.tblVarDir=this.value;renderVarTable()" title="Filter by variance direction">'+vOpts+'</select>'+
+        // Row count + clear
+        '<span class="tbl-count">'+filtered.length+' / '+allRows.length+' rows</span>'+
+        (hasFilter ? '<span class="tbl-clear" onclick="clearVarFilters()">✕ Clear filters</span>' : '')+
+      '</div>'+
+
+      '<div class="table-wrap"><table><thead><tr>'+thead+'</tr></thead><tbody>'+tbody+'</tbody></table></div>'+
+    '</div>'
+  );
+}
+
+function clearVarFilters() {
+  S.tblSearch=''; S.tblDeptFilter='ALL'; S.tblStatusFilter='ALL'; S.tblVarDir='ALL';
+  renderVarTable();
+}
+
+// ── PAGE: ALERTS ──────────────────────────────────────────────────────────
+function pageAlerts() {
+  if (!S.result) { noAnalysis(); return; }
+  renderAlertsTable();
+}
+function renderAlertsTable() {
+  var r = S.result;
+  var depts = uniqueDepts(r.matched.concat(r.zeroForecast||[]));
+  var filtered = r.alerts.filter(function(x) {
+    var dOk = S.tblDeptFilter==='ALL' || x.dept===S.tblDeptFilter;
+    var q = S.tblSearch.toLowerCase();
+    var srchOk = !q ||
+      (x.projectId   && x.projectId.toLowerCase().includes(q)) ||
+      (x.projectName && x.projectName.toLowerCase().includes(q));
+    return dOk && srchOk;
+  });
+  var COLS = ['dept','projectId','projectName','actual','forecast','variance','varPct'];
+  if (S.tblSort.col>=0 && S.tblSort.col<COLS.length) {
+    var key=COLS[S.tblSort.col];
+    filtered=filtered.slice().sort(function(a,b){
+      var av=a[key],bv=b[key];
+      if(typeof av==='string')av=av.toLowerCase();
+      if(typeof bv==='string')bv=bv.toLowerCase();
+      return av<bv?-S.tblSort.dir:av>bv?S.tblSort.dir:0;
+    });
+  }
+  var dOpts = '<option value="ALL">All Departments</option>'+
+    depts.map(function(d){return '<option value="'+d+'"'+(S.tblDeptFilter===d?' selected':'')+'>'+d+'</option>';}).join('');
+  var HDRS = ['Dept','Project ID','Project Name','Actual (USD)','Forecast (USD)','Variance (USD)','Var %','Alert'];
+  var thead = HDRS.map(function(h,i){
+    if(i===7) return '<th style="cursor:default;">'+h+'</th>';
+    var cls=S.tblSort.col===i?(S.tblSort.dir===1?' class="sort-asc"':' class="sort-desc"'):'';
+    return '<th'+cls+' onclick="S.tblSort.col=='+i+'?S.tblSort.dir*=-1:(S.tblSort.col='+i+',S.tblSort.dir=1);renderAlertsTable()">'+h+'</th>';
+  }).join('');
+  var tbody = filtered.map(function(a){
+    var vc=a.variance>=0?'td-pos':'td-neg';
+    var badge = a.forecast===0
+      ? '<span class="badge b-unfore">Zero Forecast — '+fmt(a.actual)+' unbudgeted</span>'
+      : a.variance>=0
+        ? '<span class="badge b-over">▲ Over by '+fmt(Math.abs(a.variance))+'</span>'
+        : '<span class="badge b-under">▼ Under by '+fmt(Math.abs(a.variance))+'</span>';
+    return '<tr>'+
+      '<td><span class="db '+deptClass(a.dept)+'">'+a.dept+'</span></td>'+
+      '<td class="td-mono">'+a.projectId+'</td>'+
+      '<td class="td-name">'+(a.projectName||'—')+'</td>'+
+      '<td class="td-num">'+fmt(a.actual)+'</td>'+
+      '<td class="td-num" style="color:var(--muted)">'+fmt(a.forecast)+'</td>'+
+      '<td class="td-num '+vc+'">'+(a.variance>=0?'+':'')+fmt(a.variance)+'</td>'+
+      '<td class="td-num '+vc+'">'+a.varPct.toFixed(1)+'%</td>'+
+      '<td>'+badge+'</td></tr>';
+  }).join('') || '<tr><td colspan="8" class="no-rows">'+(r.alerts.length===0?'No alerts — all within threshold ✅':'No matching alerts')+'</td></tr>';
+  setContent(
+    '<div class="card">'+
+      '<div class="card-head">'+
+        '<div><div class="card-title">Variance Alerts</div>'+
+        '<div class="card-sub">'+r.alerts.length+' projects where |variance| ≥ '+fmt(S.threshold)+'</div></div>'+
+        '<div class="card-actions">'+
+          '<button class="btn" onclick="dlCSV(\'alerts\')">CSV</button>'+
+          '<button class="btn xlsx" onclick="dlXLSX(\'alerts\',\'ALL\')">Excel</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="tbl-controls">'+
+        '<input class="tbl-search" type="text" placeholder="Search..." value="'+S.tblSearch+'" oninput="S.tblSearch=this.value;renderAlertsTable()">'+
+        '<select class="tbl-filter-sel" onchange="S.tblDeptFilter=this.value;renderAlertsTable()">'+dOpts+'</select>'+
+        '<span class="tbl-count">'+filtered.length+' rows</span>'+
+      '</div>'+
+      '<div class="table-wrap"><table><thead><tr>'+thead+'</tr></thead><tbody>'+tbody+'</tbody></table></div>'+
+    '</div>'
+  );
+}
+
+// ── PAGE: UNFORECASTED ───────────────────────────────────────────────────
+function pageUnforecasted() {
+  if (!S.result) { noAnalysis(); return; }
+  renderUnforeTable();
+}
+function renderUnforeTable() {
+  var r = S.result;
+  var q = S.tblSearch.toLowerCase();
+  var filteredUnfore = (r.unforecasted||[]).filter(function(u){
+    return !q||(u.projectId&&u.projectId.toLowerCase().includes(q))||
+      (u.projectName&&u.projectName.toLowerCase().includes(q))||
+      (u.customer&&u.customer.toLowerCase().includes(q));
+  });
+  var unforeTbody = filteredUnfore.map(function(u){
+    return '<tr>'+
+      '<td><span class="db db-other">'+(u.practice||'Unknown')+'</span></td>'+
+      '<td class="td-mono">'+u.projectId+'</td>'+
+      '<td class="td-name">'+(u.projectName||'—')+'</td>'+
+      '<td style="font-size:11px;color:var(--muted)">'+(u.customer||'—')+'</td>'+
+      '<td class="td-num td-pos">'+fmt(u.actual)+'</td>'+
+      '<td><span class="badge b-unfore">Not in forecast</span></td></tr>';
+  }).join('')||'<tr><td colspan="6" class="no-rows">'+(r.unforecasted.length===0?'All billed projects exist in the forecast file ✅':'No matches')+'</td></tr>';
+  setContent(
+    '<div class="banner amber">Projects here have a PJID in the billing advice that does not exist anywhere in the forecast file. They are excluded from variance calculations.</div>'+
+    '<input class="tbl-search" type="text" placeholder="Search..." value="'+S.tblSearch+'" oninput="S.tblSearch=this.value;renderUnforeTable()" style="margin-bottom:14px;width:100%;max-width:340px;padding:7px 11px;border:1px solid var(--border);border-radius:7px;font-family:Inter,sans-serif;font-size:12px;outline:none;">'+
+    '<div class="card" style="border-color:var(--red-bd);">'+
+      '<div class="card-head" style="background:var(--red-bg);">'+
+        '<div><div class="card-title" style="color:var(--red);">🚫 Not in Forecast File ('+filteredUnfore.length+')</div>'+
+        '<div class="card-sub" style="color:#b91c1c;">PJID does not exist anywhere in the forecast file</div></div>'+
+        '<div class="card-actions"><button class="btn xlsx" onclick="dlXLSX(\'unfore\',\'ALL\')">Excel</button></div>'+
+      '</div>'+
+      '<div class="table-wrap"><table><thead><tr><th>Practice (from Billing)</th><th>Project ID</th><th>Project Name</th><th>Customer</th><th>Actual (USD)</th><th>Status</th></tr></thead><tbody>'+unforeTbody+'</tbody></table></div>'+
+    '</div>'
+  );
+}
+
+// ── PAGE: CHARTS ──────────────────────────────────────────────────────────
+function pageCharts() {
+  if (!S.result) { noAnalysis(); return; }
+  renderChartPage();
+}
+function renderChartPage() {
+  var r     = S.result;
+  var allRows = r.matched.concat(r.zeroForecast||[]);
+  var depts = uniqueDepts(allRows);
+  var TYPES   = [{id:'bar',label:'Bar'},{id:'line',label:'Line'},{id:'doughnut',label:'Donut'},{id:'pie',label:'Pie'}];
+  var ALL_METRICS = [
+    {id:'variance_dept',    label:'Variance by Dept',    deptOnly:false},
+    {id:'actual_vs_fore',   label:'Actual vs Forecast',  deptOnly:false},
+    {id:'actual_dept',      label:'Actual Revenue',      deptOnly:false},
+    {id:'over_under',       label:'Over/Under/Within',   deptOnly:false},
+    {id:'variance_projects',label:'Project Variances',   deptOnly:true},
+    {id:'actual_projects',  label:'Project Actuals',     deptOnly:true},
+  ];
+  var avail = ALL_METRICS.filter(function(m){return !m.deptOnly||S.chartDept!=='ALL';});
+  if (ALL_METRICS.find(function(m){return m.id===S.chartMetric&&m.deptOnly;})&&S.chartDept==='ALL') S.chartMetric='variance_dept';
+  var deptTabs = '<div class="dt'+(S.chartDept==='ALL'?' active':'')+'" onclick="S.chartDept=\'ALL\';renderChartPage()">All</div>'+
+    depts.map(function(d){return '<div class="dt'+(S.chartDept===d?' active':'')+'" onclick="S.chartDept=\''+d+'\';renderChartPage()">'+d+'</div>';}).join('');
+  var typeOpts   = TYPES.map(function(t){return '<div class="chart-opt'+(S.chartType===t.id?' sel':'')+'" onclick="S.chartType=\''+t.id+'\';renderChartPage()">'+t.label+'</div>';}).join('');
+  var metricOpts = avail.map(function(m){return '<div class="chart-opt'+(S.chartMetric===m.id?' sel':'')+'" onclick="S.chartMetric=\''+m.id+'\';renderChartPage()">'+m.label+'</div>';}).join('');
+  var dL = S.chartDept==='ALL'?'All Departments':S.chartDept;
+  setContent(
+    '<div class="card"><div class="card-head"><div><div class="card-title">Department Filter</div><div class="card-sub">Select a department for project-level charts</div></div></div><div class="dept-tabs">'+deptTabs+'</div></div>'+
+    '<div class="card"><div class="card-head"><div class="card-title">Chart Builder — '+dL+'</div></div>'+
+    '<div style="padding:14px;display:flex;flex-direction:column;gap:10px;">'+
+      '<div><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;">Chart Type</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+typeOpts+'</div></div>'+
+      '<div><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;">Metric</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+metricOpts+'</div></div>'+
+    '</div></div>'+
+    '<div class="card"><div class="card-head">'+
+      '<div><div class="card-title" id="chartTitle">'+dL+'</div></div>'+
+      '<div class="card-actions"><button class="btn" onclick="dlChart()">PNG</button><button class="btn gmail" onclick="gmailChart()">Send to Dept Head</button></div>'+
+    '</div><div style="padding:16px;"><canvas id="userChart" style="max-height:370px;"></canvas></div></div>'
+  );
+  setTimeout(function(){buildChart();},60);
+}
+function buildChart(){
+  var r=S.result; var canvas=document.getElementById('userChart'); if(!canvas)return;
+  S.chartInstances.forEach(function(c){try{c.destroy();}catch(e){}});S.chartInstances=[];
+  var allRows=r.matched.concat(r.zeroForecast||[]);
+  var depts=uniqueDepts(allRows);
+  var type=S.chartType,metric=S.chartMetric,dept=S.chartDept;
+  function gc(d){return DEPT_COLORS[d]||'#009B8D';}
+  var cfg;
+  if(dept==='ALL'){
+    var labels=depts;
+    if(metric==='variance_dept'){
+      var vals=labels.map(function(d){return allRows.filter(function(x){return x.dept===d;}).reduce(function(s,x){return s+x.variance;},0);});
+      cfg={type:type,data:{labels:labels,datasets:[{label:'Variance',data:vals,backgroundColor:vals.map(function(v){return v>=0?'#22c55e88':'#ef444488';}),borderColor:vals.map(function(v){return v>=0?'#16a34a':'#dc2626';}),borderWidth:2,borderRadius:type==='bar'?5:0}]},options:{responsive:true,plugins:{legend:{display:type!=='bar'&&type!=='line'}},scales:type==='bar'||type==='line'?{y:{ticks:{callback:function(v){return '$'+Math.round(v/1000)+'k';}}}}:{}}};
+      if(document.getElementById('chartTitle'))document.getElementById('chartTitle').textContent='Variance by Department';
+    }else if(metric==='actual_vs_fore'){
+      var acts=labels.map(function(d){return allRows.filter(function(x){return x.dept===d;}).reduce(function(s,x){return s+x.actual;},0);});
+      var fors=labels.map(function(d){return allRows.filter(function(x){return x.dept===d;}).reduce(function(s,x){return s+x.forecast;},0);});
+      cfg={type:'bar',data:{labels:labels,datasets:[{label:'Actual',data:acts,backgroundColor:labels.map(function(d){return gc(d)+'cc';}),borderRadius:5},{label:'Forecast',data:fors,backgroundColor:labels.map(function(d){return gc(d)+'44';}),borderRadius:5}]},options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{ticks:{callback:function(v){return '$'+Math.round(v/1000)+'k';}}}}}};
+      if(document.getElementById('chartTitle'))document.getElementById('chartTitle').textContent='Actual vs Forecast';
+    }else if(metric==='actual_dept'){
+      var vals=labels.map(function(d){return allRows.filter(function(x){return x.dept===d;}).reduce(function(s,x){return s+x.actual;},0);});
+      cfg={type:type,data:{labels:labels,datasets:[{label:'Actual',data:vals,backgroundColor:labels.map(function(d){return gc(d)+'aa';}),borderColor:labels.map(gc),borderWidth:2,borderRadius:type==='bar'?5:0}]},options:{responsive:true,plugins:{legend:{display:type!=='bar'&&type!=='line'}},scales:type==='bar'||type==='line'?{y:{ticks:{callback:function(v){return '$'+Math.round(v/1000)+'k';}}}}:{}}};
+      if(document.getElementById('chartTitle'))document.getElementById('chartTitle').textContent='Actual Revenue by Department';
+    }else if(metric==='over_under'){
+      var over=r.alerts.filter(function(p){return p.variance>0&&p.forecast>0;}).length;
+      var under=r.alerts.filter(function(p){return p.variance<0;}).length;
+      var zero=(r.zeroForecast||[]).length;
+      var within=r.matched.filter(function(p){return !p.aboveThreshold;}).length;
+      cfg={type:(type==='bar'||type==='line')?'bar':type,data:{labels:['Over','Under','Zero Forecast','Within'],datasets:[{data:[over,under,zero,within],backgroundColor:['#22c55e','#ef4444','#f59e0b','#e2e8f0'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,plugins:{legend:{position:'bottom'}},cutout:type==='doughnut'?'55%':undefined}};
+      if(document.getElementById('chartTitle'))document.getElementById('chartTitle').textContent='Over / Under / Zero / Within';
+    }
+  }else{
+    var items=allRows.filter(function(x){return x.dept===dept;});
+    if(metric==='variance_projects'||metric==='variance_dept'){
+      var sorted=items.slice().sort(function(a,b){return Math.abs(b.variance)-Math.abs(a.variance);}).slice(0,15);
+      cfg={type:'bar',data:{labels:sorted.map(function(p){return p.projectId;}),datasets:[{label:'Variance',data:sorted.map(function(p){return p.variance;}),backgroundColor:sorted.map(function(p){return p.variance>=0?'#22c55e88':'#ef444488';}),borderColor:sorted.map(function(p){return p.variance>=0?'#16a34a':'#dc2626';}),borderWidth:2,borderRadius:4}]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:function(v){return '$'+Math.round(v/1000)+'k';}}}}}};
+      if(document.getElementById('chartTitle'))document.getElementById('chartTitle').textContent=dept+' — Project Variances';
+    }else if(metric==='actual_projects'||metric==='actual_dept'){
+      var sorted=items.slice().sort(function(a,b){return b.actual-a.actual;}).slice(0,15);
+      cfg={type:type,data:{labels:sorted.map(function(p){return p.projectId;}),datasets:[{label:'Actual',data:sorted.map(function(p){return p.actual;}),backgroundColor:gc(dept)+'aa',borderColor:gc(dept),borderWidth:2,borderRadius:type==='bar'?4:0}]},options:{responsive:true,plugins:{legend:{display:false}},scales:type==='bar'||type==='line'?{y:{ticks:{callback:function(v){return '$'+Math.round(v/1000)+'k';}}}}:{}}};
+      if(document.getElementById('chartTitle'))document.getElementById('chartTitle').textContent=dept+' — Project Actuals';
+    }else if(metric==='actual_vs_fore'){
+      var sorted=items.slice().sort(function(a,b){return Math.abs(b.variance)-Math.abs(a.variance);}).slice(0,12);
+      cfg={type:'bar',data:{labels:sorted.map(function(p){return p.projectId;}),datasets:[{label:'Actual',data:sorted.map(function(p){return p.actual;}),backgroundColor:gc(dept)+'cc',borderRadius:4},{label:'Forecast',data:sorted.map(function(p){return p.forecast;}),backgroundColor:gc(dept)+'44',borderRadius:4}]},options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{ticks:{callback:function(v){return '$'+Math.round(v/1000)+'k';}}}}}};
+      if(document.getElementById('chartTitle'))document.getElementById('chartTitle').textContent=dept+' — Actual vs Forecast';
+    }else if(metric==='over_under'){
+      var over=items.filter(function(p){return p.aboveThreshold&&p.variance>0&&p.forecast>0;}).length;
+      var under=items.filter(function(p){return p.aboveThreshold&&p.variance<0;}).length;
+      var zero=items.filter(function(p){return p.forecast===0;}).length;
+      var within=items.filter(function(p){return !p.aboveThreshold&&p.forecast>0;}).length;
+      cfg={type:(type==='bar'||type==='line')?'bar':type,data:{labels:['Over','Under','Zero Forecast','Within'],datasets:[{data:[over,under,zero,within],backgroundColor:['#22c55e','#ef4444','#f59e0b','#e2e8f0'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,plugins:{legend:{position:'bottom'}},cutout:type==='doughnut'?'55%':undefined}};
+      if(document.getElementById('chartTitle'))document.getElementById('chartTitle').textContent=dept+' — Over/Under/Zero/Within';
+    }
+  }
+  if(cfg){var c=new Chart(canvas,cfg);S.chartInstances.push(c);}
+}
+function dlChart(){var c=document.getElementById('userChart');if(!c)return;var a=document.createElement('a');a.download='chart-'+(S.chartDept==='ALL'?'all':S.chartDept)+'.png';a.href=c.toDataURL('image/png');a.click();}
+
+function pageEmail() {
+  if (!S.result) { noAnalysis(); return; }
+  var txt = buildEmail();
+  setContent(
+    '<div class="banner teal">✉ Copy the summary below and paste into your email, or click <strong>Open in Gmail</strong> to compose directly.</div>'+
+    '<div class="card">'+
+      '<div class="card-head">'+
+        '<div><div class="card-title">Email-Ready Summary</div><div class="card-sub">'+MONTH_NAMES[S.currentMonth]+' Variance Report</div></div>'+
+        '<div class="card-actions">'+
+          '<button class="btn" onclick="copyEmail()">📋 Copy Text</button>'+
+          '<button class="btn" onclick="dlEmailTxt()">⬇ .txt</button>'+
+          '<button class="btn gmail" onclick="openGmail()">✉ Open in Gmail</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="padding:16px 18px;"><div class="email-pre" id="emailPre">'+escapeHtml(txt)+'</div></div>'+
+    '</div>'
+  );
+}
+
+function openGmail() {
+  var txt = buildEmail();
+  var subject = encodeURIComponent(MONTH_NAMES[S.currentMonth]+' Revenue Variance Report — Mobius Group');
+  var body    = encodeURIComponent(txt);
+  window.open('https://mail.google.com/mail/?view=cm&fs=1&su='+subject+'&body='+body, '_blank');
+}
+
+function copyEmail() {
+  var el = document.getElementById('emailPre');
+  var txt = el ? el.textContent : buildEmail();
+  navigator.clipboard.writeText(txt).then(function(){showToast('📋 Copied to clipboard!');});
+}
+function dlEmailTxt() { dlBlob(buildEmail(),'variance-summary.txt','text/plain'); }
+
+// ══════════════════════════════════════════
+// PAGE: DOWNLOAD
+// ══════════════════════════════════════════
+function pageDownload() {
+  if (!S.result) { noAnalysis(); return; }
+  var r = S.result;
+  var depts = uniqueDepts(r.matched);
+
+  function dlRow(icon, title, sub, btns) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:1px solid var(--border);border-radius:9px;">'+
+      '<div><div style="font-size:13px;font-weight:600;color:var(--charcoal);">'+icon+' '+title+'</div>'+
+      '<div style="font-size:12px;color:var(--muted);margin-top:2px;">'+sub+'</div></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+btns+'</div></div>';
+  }
+
+  var deptButtons = depts.map(function(d){
+    return '<button class="btn" onclick="dlXLSX(\'main\',\''+d+'\')">⬇ '+d+'</button>';
+  }).join('');
+
+  setContent(
+    '<div class="card">'+
+      '<div class="card-head"><div class="card-title">Download Analysis</div><div class="card-sub">Export any section as Excel or CSV</div></div>'+
+      '<div style="padding:18px;display:flex;flex-direction:column;gap:10px;">'+
+        dlRow('📋','Summary Table','Division-wise summary with remarks (matches your report format)',
+          '<button class="btn" onclick="downloadSummaryExcel()">⬇ Summary Excel</button>')+
+        dlRow('📊','Full Variance — All Departments','Every project, all departments',
+          '<button class="btn" onclick="dlCSV(\'main\')">⬇ CSV</button><button class="btn pri" onclick="dlXLSX(\'main\',\'ALL\')">⬇ Excel</button>')+
+        '<div style="padding:14px 16px;border:1px solid var(--border);border-radius:9px;">'+
+          '<div style="font-size:13px;font-weight:600;color:var(--charcoal);margin-bottom:6px;">🏢 Department-wise Excel</div>'+
+          '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Download variance data for one department at a time</div>'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+deptButtons+'</div>'+
+        '</div>'+
+        dlRow('⚠','Alerts Only','Projects exceeding variance threshold',
+          '<button class="btn" onclick="dlCSV(\'alerts\')">⬇ CSV</button><button class="btn pri" onclick="dlXLSX(\'alerts\',\'ALL\')">⬇ Excel</button>')+
+        dlRow('⚡','Unforecasted Revenue','Billed projects with no forecast entry',
+          '<button class="btn" onclick="dlCSV(\'unfore\')">⬇ CSV</button><button class="btn pri" onclick="dlXLSX(\'unfore\',\'ALL\')">⬇ Excel</button>')+
+        dlRow('📧','Email Summary','.txt file ready for pasting into email',
+          '<button class="btn" onclick="dlEmailTxt()">⬇ .txt</button>')+
+      '</div>'+
+    '</div>'
+  );
+}
+
+// ══════════════════════════════════════════
+// PAGE: HISTORY
+// ══════════════════════════════════════════
+function pageHistory() {
+  if (!S.sheetsReady) {
+    setContent(
+      '<div class="banner amber">⚙ Set up Google Sheets to enable monthly history. See the README for instructions.</div>'+
+      '<div class="empty-state"><div class="es-icon">📅</div><div class="es-title">History not configured</div>'+
+      '<div class="es-sub">Once Google Sheets is set up, every analysis will be saved automatically<br>and you can browse past months here.</div></div>'
+    );
+    return;
+  }
+  if (!S.history.length) {
+    setContent('<div class="empty-state"><div class="es-icon">📅</div><div class="es-title">No history yet</div><div class="es-sub">Run your first analysis to start building history.</div></div>');
+    return;
+  }
+  var cards = S.history.map(function(h){
+    var vc=h.netVariance>=0?'color:var(--green)':'color:var(--red)';
+    return '<div class="hist-card">'+
+      '<div class="hc-month">'+h.monthLabel+'</div>'+
+      '<div class="hc-date">Saved on '+h.savedOn+'</div>'+
+      '<div class="hc-kpi"><span class="hc-lbl">Actual Revenue</span><span class="hc-val">'+fmt(h.totalActual)+'</span></div>'+
+      '<div class="hc-kpi"><span class="hc-lbl">Net Variance</span><span class="hc-val" style="'+vc+'">'+(h.netVariance>=0?'+':'')+fmt(h.netVariance)+'</span></div>'+
+      '<div class="hc-kpi"><span class="hc-lbl">Alerts</span><span class="hc-val c-red">'+h.alertCount+'</span></div>'+
+      '<div class="hc-actions">'+
+        '<button class="hc-btn" onclick="viewHistory(\''+h.id+'\')">👁 View</button>'+
+        '<button class="hc-btn del" onclick="deleteHistory(\''+h.id+'\')">🗑 Delete</button>'+
+      '</div></div>';
+  }).join('');
+  setContent('<div class="hist-grid">'+cards+'</div>');
+}
+
+// ══════════════════════════════════════════
+// FILE HANDLING
+// ══════════════════════════════════════════
+function dzOver(e,id){e.preventDefault();document.getElementById(id).classList.add('drag');}
+function dzLeave(e,id){document.getElementById(id).classList.remove('drag');}
+function dzDrop(e,type){
+  e.preventDefault();
+  document.getElementById(type==='billing'?'billingZone':'forecastZone').classList.remove('drag');
+  var f=e.dataTransfer.files[0]; if(f) loadFile(f,type);
+}
+function fileSelected(e,type){var f=e.target.files[0];if(f)loadFile(f,type);}
+function loadFile(file,type){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+    if(type==='billing'){S.billingWb=wb;S.billingName=file.name;}
+    else{S.forecastWb=wb;S.forecastName=file.name;}
+    pageUpload();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ══════════════════════════════════════════
+// ANALYSIS ENGINE
+// ══════════════════════════════════════════
+function runAnalysis(){
+  var mEl=document.getElementById('monthSel');
+  var tEl=document.getElementById('threshInp');
+  S.currentMonth = mEl ? parseInt(mEl.value) : S.currentMonth;
+  S.threshold    = tEl ? (parseFloat(tEl.value)||1000) : S.threshold;
+
+  showLoading('Detecting file formats…');
+  setTimeout(function(){
+    try {
+      // ── STEP 1: Parse billing ────────────────────────────────────────
+      setLoadingText('Reading billing advice…');
+      var billingResult = parseBilling(S.billingWb);
+      if (billingResult.error) {
+        hideLoading();
+        showErrorPage('Billing Advice File Error', billingResult.error, billingResult.hints);
+        return;
+      }
+
+      // ── STEP 2: Parse forecast ───────────────────────────────────────
+      setLoadingText('Reading forecast file…');
+      var forecastResult = parseForecast(S.forecastWb, S.currentMonth);
+      if (forecastResult.error) {
+        hideLoading();
+        showErrorPage('Forecast File Error', forecastResult.error, forecastResult.hints);
+        return;
+      }
+
+      // ── STEP 3: Compute variance ─────────────────────────────────────
+      setLoadingText('Computing variance…');
+      S.result = computeVariance(billingResult.data, forecastResult, S.threshold);
+
+      // ── STEP 4: Warn if very little data matched ─────────────────────
+      if (S.result.matched.length === 0 && S.result.zeroForecast.length === 0 && S.result.unforecasted.length === 0) {
+        hideLoading();
+        showErrorPage('No Data Matched',
+          'No projects from the billing advice matched any project in the forecast file.',
+          [
+            'Make sure you uploaded the correct billing advice for '+MONTH_NAMES[S.currentMonth],
+            'Make sure the forecast file covers the same month',
+            'Check that Project IDs (e.g. PJID1234) exist in both files',
+          ]);
+        return;
+      }
+
+      // ── STEP 5: Update alert badge ───────────────────────────────────
+      var badge = document.getElementById('alertBadge');
+      if (badge && S.result.alerts.length > 0) {
+        badge.textContent = S.result.alerts.length;
+        badge.style.display = 'inline';
+      }
+      // Update unforecasted sidebar item to show count
+      // Only count truly unforecasted (billing-only) — zeroForecast projects now appear in variance table
+      var ufCount = (S.result.unforecasted||[]).length;
+      var sbUf = document.getElementById('sb-unforecasted');
+      if (sbUf && ufCount > 0) {
+        if (!sbUf.querySelector('.sb-badge')) {
+          var b2 = document.createElement('span');
+          b2.className = 'sb-badge';
+          b2.style.background = 'var(--amber)';
+          sbUf.appendChild(b2);
+        }
+        sbUf.querySelector('.sb-badge').textContent = ufCount;
+      }
+
+      hideLoading();
+      saveHistory();
+      showToast('Analysis complete — ' + MONTH_NAMES[S.currentMonth] + ' (' +
+        S.result.matched.length + ' in variance table, ' +
+        S.result.zeroForecast.length + ' zero forecast, ' +
+        S.result.unforecasted.length + ' unforecasted)');
+      nav('overview');
+
+    } catch(err) {
+      hideLoading();
+      showErrorPage('Unexpected Error', err.message, [
+        'Try re-uploading both files',
+        'Make sure the files are not password protected',
+        'Make sure the files are not open in Excel at the same time',
+        'Contact your admin if the issue persists',
+      ]);
+      console.error(err);
+    }
+  }, 100);
+}
+
+// ── FRIENDLY ERROR PAGE ──────────────────────────────────────────────────
+function showErrorPage(title, message, hints) {
+  var hintsHtml = (hints||[]).map(function(h){
+    return '<li style="margin-bottom:6px;">'+h+'</li>';
+  }).join('');
+  setContent(
+    '<div class="card" style="border-color:var(--red-bd);">'+
+      '<div class="card-head" style="background:var(--red-bg);">'+
+        '<div><div class="card-title" style="color:var(--red);">⚠ '+title+'</div>'+
+        '<div class="card-sub" style="color:#b91c1c;">The analysis could not be completed</div></div>'+
+      '</div>'+
+      '<div style="padding:20px;">'+
+        '<div style="background:#fff5f5;border:1px solid var(--red-bd);border-radius:8px;padding:14px 16px;margin-bottom:16px;">'+
+          '<div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:4px;">What went wrong:</div>'+
+          '<div style="font-size:13px;color:#7f1d1d;line-height:1.6;">'+message+'</div>'+
+        '</div>'+
+        (hintsHtml ? '<div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:8px;padding:14px 16px;margin-bottom:20px;">'+
+          '<div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:8px;">How to fix it:</div>'+
+          '<ul style="font-size:13px;color:#1e3a8a;line-height:1.6;padding-left:18px;">'+hintsHtml+'</ul>'+
+        '</div>' : '')+
+        '<button class="btn pri" onclick="nav(\'upload\')">← Go back to Upload</button>'+
+      '</div>'+
+    '</div>'
+  );
+}
+
+function parseBilling(wb) {
+  try {
+    // Detect which sheet to use — first sheet with billing data
+    var targetSheet = null;
+    for (var si = 0; si < wb.SheetNames.length; si++) {
+      var sn = wb.SheetNames[si];
+      var rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, defval:null});
+      // Look for a row that has "Project ID" somewhere
+      for (var i = 0; i < Math.min(rows.length, 20); i++) {
+        var row = rows[i]; if (!row) continue;
+        if (row.some(function(v){ return v && typeof v==='string' && v.toLowerCase().includes('project id'); })) {
+          targetSheet = sn; break;
+        }
+      }
+      if (targetSheet) break;
+    }
+
+    if (!targetSheet) {
+      return { error: 'Could not find billing data in the uploaded file. No column named "Project ID" was found.',
+        hints: [
+          'Make sure you uploaded the Billing Advice file (not the forecast)',
+          'The file must have a column header called "Project ID"',
+          'Check that the file is not empty or corrupted',
+        ]};
+    }
+
+    var ws = wb.Sheets[targetSheet];
+    var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+    var result = [];
+    var currentPractice = '', headerRow = -1, colMap = {};
+    var projectsFound = 0;
+
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i]; if (!row) continue;
+      var rowText = row.filter(Boolean).join(' ');
+
+      // Detect practice section header
+      var m = rowText.match(/(?:Billing Advice[^-]*-\s*)([A-Za-z]+)/i) ||
+               rowText.match(/Billing\s+([A-Za-z]+)/i);
+      if (m && !rowText.toLowerCase().includes('month')) currentPractice = m[1].trim();
+
+      // Detect column header row
+      var pidIdx = -1;
+      for (var j = 0; j < row.length; j++) {
+        if (row[j] && typeof row[j]==='string' && row[j].toLowerCase().includes('project id')) {
+          pidIdx = j; break;
+        }
+      }
+      if (pidIdx !== -1) {
+        headerRow = i; colMap = {};
+        for (var j = 0; j < row.length; j++) {
+          if (!row[j] || typeof row[j]!=='string') continue;
+          var key = row[j].toLowerCase().trim();
+          if (key.includes('project id'))                                colMap.pid  = j;
+          else if (key.includes('project name') || (key.includes('project') && !key.includes('id'))) colMap.name = j;
+          else if (key.includes('customer') || key.includes('client'))   colMap.cust = j;
+          else if (key === 'revenue')                                     colMap.rev  = j;
+          else if (key.includes('practice') || key.includes('division')) colMap.prac = j;
+        }
+        continue;
+      }
+
+      // Data rows
+      if (headerRow !== -1 && i > headerRow) {
+        var pid = row[colMap.pid];
+        if (!pid || typeof pid !== 'string') continue;
+        pid = pid.trim();
+        if (!pid.startsWith('PJID')) continue;
+        var rev = parseFloat(row[colMap.rev]) || 0;
+        var prac = colMap.prac !== undefined ? (row[colMap.prac] || currentPractice) : currentPractice;
+        projectsFound++;
+        result.push({
+          practice:    String(prac || currentPractice || 'Unknown').trim(),
+          projectId:   pid,
+          projectName: String(row[colMap.name] || '').trim(),
+          customer:    String(row[colMap.cust] || '').trim(),
+          revenue:     rev,
+        });
+      }
+    }
+
+    if (projectsFound === 0) {
+      return { error: 'The billing advice file was recognised but no project rows (PJID...) were found.',
+        hints: [
+          'Make sure Project IDs start with "PJID" (e.g. PJID1234)',
+          'Check that the Revenue column has values',
+          'Make sure the file is not filtered or hidden in Excel',
+        ]};
+    }
+
+    return { data: result };
+
+  } catch(e) {
+    return { error: 'Failed to read the billing advice file: ' + e.message,
+      hints: [
+        'Make sure the file is a valid Excel (.xlsx) file',
+        'Try saving the file again in Excel and re-uploading',
+        'Make sure the file is not password protected',
+      ]};
+  }
+}
+
+function parseForecast(wb, currentMonth) {
+  try {
+    // Build the month label exactly as it appears in this file: "Mar'26", "Apr'25" etc.
+    var SHORT = {1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'May',6:'Jun',
+                 7:'Jul',8:'Aug',9:'Sep',10:'Oct',11:'Nov',12:'Dec'};
+    // Generate candidate labels for both possible years (handles fiscal year ambiguity)
+    var now = new Date();
+    var yr1 = String(now.getFullYear()).slice(2);      // e.g. "26"
+    var yr2 = String(now.getFullYear()-1).slice(2);   // e.g. "25"
+    var yr3 = String(now.getFullYear()+1).slice(2);   // e.g. "27"
+    var mon = SHORT[currentMonth];
+    // All formats we will accept — covers "Mar'26", "Mar-26", "Mar 26", "March 2026" etc.
+    var targets = [
+      (mon+"'"+yr1).toLowerCase(),
+      (mon+"'"+yr2).toLowerCase(),
+      (mon+"'"+yr3).toLowerCase(),
+      (mon+"-"+yr1).toLowerCase(),
+      (mon+"-"+yr2).toLowerCase(),
+      (mon+"-"+yr3).toLowerCase(),
+      (mon+" "+yr1).toLowerCase(),
+      (mon+" "+yr2).toLowerCase(),
+    ];
+
+    function monthMatch(val) {
+      if (!val) return false;
+      var s = String(val).toLowerCase().trim().replace(/\s+/g,' ');
+      return targets.some(function(t){ return s.indexOf(t) !== -1; });
+    }
+
+    // ── Detect which sheet(s) to use ────────────────────────────────────────
+    var hasSummaryTab = wb.SheetNames.indexOf('Summary') !== -1;
+
+    // ── FORMAT: Summary tab (this is the actual Revenue Flash format) ────────
+    // Columns (0-indexed): Practice=1, Customer=2, Project ID=3, Project Name=4,
+    //                      Revenue=11, Month=12
+    // Header row is row index 1, data starts at row index 2
+    if (hasSummaryTab) {
+      var rows = XLSX.utils.sheet_to_json(wb.Sheets['Summary'], {header:1, defval:null});
+
+      // ── Scan every row to find the header row ────────────────────────────
+      var pidCol=-1, nameCol=-1, practiceCol=-1, revCol=-1, monthCol=-1, headerRowIdx=-1;
+      for (var i = 0; i < Math.min(rows.length, 15); i++) {
+        var row = rows[i]; if (!row) continue;
+        var tmpPid=-1, tmpRev=-1, tmpMon=-1;
+        for (var j = 0; j < row.length; j++) {
+          if (!row[j]) continue;
+          var k = String(row[j]).toLowerCase().trim();
+          if (k === 'project id' || k === 'pjid' || k.includes('project id'))  tmpPid = j;
+          if (k === 'revenue' || k === 'amount')                                 tmpRev = j;
+          if (k === 'month'   || k === 'period')                                 tmpMon = j;
+          if (k === 'practice' || k === 'division' || k === 'department')        practiceCol = j;
+          if (k === 'project name' || k.includes('project name'))                nameCol = j;
+        }
+        if (tmpPid !== -1 && tmpRev !== -1 && tmpMon !== -1) {
+          pidCol = tmpPid; revCol = tmpRev; monthCol = tmpMon;
+          headerRowIdx = i; break;
+        }
+      }
+
+      if (pidCol === -1 || revCol === -1 || monthCol === -1) {
+        // Show actual headers found to aid diagnosis
+        var found = [];
+        for (var i = 0; i < Math.min(rows.length, 5); i++) {
+          if (rows[i]) rows[i].forEach(function(v){ if(v) found.push(String(v)); });
+        }
+        return {error:'Summary tab found but headers not located. Found cells: ['+found.slice(0,20).join(' | ')+']',
+          hints:[
+            'Needs a "Project ID" column, a "Revenue" column, and a "Month" column',
+            'Header row can be anywhere in the first 15 rows',
+          ]};
+      }
+
+      var byMonth = {};   // pid → {dept, projectName, forecast}  — for selected month only
+      var allPids = {};   // pid → {dept, projectName}             — every PJID in the file
+
+      for (var i = headerRowIdx + 1; i < rows.length; i++) {
+        var row = rows[i]; if (!row) continue;
+        var pid = row[pidCol];
+        if (!pid) continue;
+        pid = String(pid).trim();
+        if (!pid.startsWith('PJID')) continue;
+
+        var name  = nameCol     >= 0 ? String(row[nameCol]    || '').trim() : '';
+        var prac  = practiceCol >= 0 ? String(row[practiceCol]|| '').trim() : 'Unknown';
+        var dept  = mapPracticeToDept(prac);
+        var rev   = parseFloat(row[revCol]) || 0;
+        var mVal  = row[monthCol];
+
+        // Register PID as existing (used for unforecasted detection)
+        if (!allPids[pid]) allPids[pid] = {dept:dept, projectName:name};
+
+        // Accumulate revenue only for the selected month
+        if (!monthMatch(mVal)) continue;
+        if (!byMonth[pid]) {
+          byMonth[pid] = {dept:dept, projectName:name, forecast:rev};
+        } else {
+          byMonth[pid].forecast += rev;
+        }
+      }
+
+      if (Object.keys(allPids).length === 0) {
+        return {error:'Summary tab found but no PJID rows located.',
+          hints:['Project IDs must start with "PJID"','Check the Project ID column']};
+      }
+
+      return {byMonth:byMonth, allPids:allPids, format:'summary-tab'};
+    }
+
+    // ── FORMAT: Dept tabs (eRTHC, DR-BPS, MSD, POI, Lease, DIG, Software, AIML) ─
+    var hasOldDeptTabs = DEPTS.some(function(d){ return wb.SheetNames.indexOf(d) !== -1; });
+    if (hasOldDeptTabs) {
+      var byMonth = {};
+      var allPids = {};
+
+      DEPTS.forEach(function(dept) {
+        if (wb.SheetNames.indexOf(dept) === -1) return;
+        var rows = XLSX.utils.sheet_to_json(wb.Sheets[dept], {header:1, defval:null});
+
+        // Find header row and month column by scanning headers
+        var monthColFound = -1, pidColFound = 0, nameColFound = 1, headerRow = -1;
+        for (var hi = 0; hi < Math.min(rows.length, 10) && monthColFound === -1; hi++) {
+          var hrow = rows[hi]; if (!hrow) continue;
+          for (var j = 0; j < hrow.length; j++) {
+            if (hrow[j] && monthMatch(String(hrow[j]))) { monthColFound = j; headerRow = hi; break; }
+          }
+        }
+        // Fallback to configured column index
+        if (monthColFound === -1) monthColFound = MONTH_COL[currentMonth];
+
+        var dataStart = headerRow >= 0 ? headerRow + 1 : 2;
+        for (var i = dataStart; i < rows.length; i++) {
+          var row = rows[i]; if (!row || !row[pidColFound]) continue;
+          var pid = String(row[pidColFound]).trim();
+          if (!pid.startsWith('PJID')) continue;
+          var name = String(row[nameColFound]||'').trim();
+          if (!allPids[pid]) allPids[pid] = {dept:dept, projectName:name};
+          var fc = parseFloat(row[monthColFound]) || 0;
+          if (!byMonth[pid]) {
+            byMonth[pid] = {dept:dept, projectName:name, forecast:fc};
+          } else {
+            byMonth[pid].forecast += fc;
+          }
+        }
+      });
+
+      if (Object.keys(allPids).length === 0) {
+        return {error:'Dept tabs found but no PJID data was found.',
+          hints:['Verify tabs contain rows starting with PJID']};
+      }
+      return {byMonth:byMonth, allPids:allPids, format:'dept-tabs'};
+    }
+
+    // ── No recognised format ────────────────────────────────────────────────
+    return {error:'Forecast file format not recognised. Sheets found: '+wb.SheetNames.join(', '),
+      hints:[
+        'Expected a "Summary" tab with columns: Practice, Project ID, Revenue, Month',
+        'Or dept tabs named: eRTHC, DR-BPS, MSD, POI, Lease, DIG, Software, AIML',
+      ]};
+
+  } catch(e) {
+    return {error:'Failed to read forecast file: '+e.message,
+      hints:['Ensure it is a valid .xlsx file','Try re-saving from Excel and re-uploading']};
+  }
+}
+
+
+function computeVariance(billingData, forecastResult, threshold) {
+  var byMonth = forecastResult.byMonth || {};   // pid → {dept, projectName, forecast} for selected month
+  var allPids = forecastResult.allPids || {};   // pid → {dept, projectName} — exists anywhere in forecast
+
+  // ── Rule 2 & 3: Walk every billed project ────────────────────────────────
+  // Rule 2: PJID in both           → variance table normally
+  // Rule 3: PJID in billing only   → unforecasted
+  // Rule 4: PJID in forecast file but $0 this month + has billing → variance table (actual vs $0 forecast)
+  var matched      = [];  // variance table rows (rules 1, 2, 4)
+  var unforecasted = [];  // billing only — not in forecast file at all (rule 3)
+  var billedPids   = {};  // track which pids came from billing
+
+  billingData.forEach(function(bill) {
+    var pid    = bill.projectId; if (!pid) return;
+    var actual = bill.revenue;
+    billedPids[pid] = true;
+
+    if (allPids[pid]) {
+      // PID exists in forecast file (rules 2 & 4)
+      var dept        = allPids[pid].dept;
+      var projectName = allPids[pid].projectName || bill.projectName;
+      var fc          = byMonth[pid] ? byMonth[pid].forecast : 0;  // $0 if not in this month
+      var variance    = actual - fc;
+      var varPct      = fc !== 0 ? (variance / Math.abs(fc)) * 100 : (actual !== 0 ? 100 : 0);
+      matched.push({
+        dept:dept, projectId:pid, projectName:projectName,
+        customer:bill.customer, actual:actual, forecast:fc,
+        variance:variance, varPct:varPct,
+        aboveThreshold: Math.abs(variance) >= threshold,
+        forecastOnly: false,
+      });
+    } else {
+      // Rule 3: not in forecast file at all
+      unforecasted.push({
+        practice:    bill.practice,
+        projectId:   pid,
+        projectName: bill.projectName,
+        customer:    bill.customer,
+        actual:      actual,
+      });
+    }
+  });
+
+  // ── Rule 1: Forecast-only projects (in forecast, no billing at all) ───────
+  // Use allPids so we catch every PJID in the forecast file regardless of
+  // whether they have a value this month or not.
+  Object.keys(allPids).forEach(function(pid) {
+    if (billedPids[pid]) return;  // already handled above
+    var dept = allPids[pid].dept;
+    var name = allPids[pid].projectName;
+    var fc   = byMonth[pid] ? byMonth[pid].forecast : 0;
+    var variance = 0 - fc;   // actual(0) − forecast
+    var varPct   = fc !== 0 ? -100 : 0;
+    matched.push({
+      dept:dept, projectId:pid, projectName:name,
+      customer:'', actual:0, forecast:fc,
+      variance:variance, varPct:varPct,
+      aboveThreshold: Math.abs(variance) >= threshold,
+      forecastOnly: true,
+    });
+  });
+
+  // Sort by dept then by absolute variance desc
+  matched.sort(function(a,b){
+    return a.dept < b.dept ? -1 : a.dept > b.dept ? 1 : Math.abs(b.variance) - Math.abs(a.variance);
+  });
+
+  var totalActual   = matched.reduce(function(s,r){return s+r.actual;},0);
+  var totalForecast = matched.reduce(function(s,r){return s+r.forecast;},0);
+  var totalVariance = totalActual - totalForecast;
+  var alerts        = matched.filter(function(r){return r.aboveThreshold;});
+
+  return {
+    matched:      matched,       // ALL variance table rows — rules 1, 2, 4
+    zeroForecast: [],            // kept for backwards compat but always empty now
+    unforecasted: unforecasted,  // rule 3: billing only, not in forecast file
+    totalActual:  totalActual,
+    totalForecast:totalForecast,
+    totalVariance:totalVariance,
+    alerts:       alerts,
+  };
+}
+
+
+function downloadSummaryExcel(){
+  var r=S.result;
+  var depts=uniqueDepts(r.matched);
+  var rows=depts.map(function(d){
+    var items=r.matched.filter(function(x){return x.dept===d;});
+    var revenue=items.reduce(function(s,x){return s+x.actual;},0);
+    var forecast=items.reduce(function(s,x){return s+x.forecast;},0);
+    return{division:d,revenue:revenue,forecast:forecast,variance:revenue-forecast,remarks:(S.remarksCustom[d]||S.remarksAuto[d]||'')};
+  });
+  var totalR=rows.reduce(function(s,r){return s+r.revenue;},0);
+  var totalF=rows.reduce(function(s,r){return s+r.forecast;},0);
+
+  var wb=XLSX.utils.book_new();
+  var data=[['Division','Revenue','Forecast (excl internal)','Variance','Remarks']];
+  rows.forEach(function(r){data.push([r.division,r.revenue,r.forecast,r.variance,r.remarks]);});
+  data.push(['Services TOTAL',totalR,totalF,totalR-totalF,'']);
+
+  var ws=XLSX.utils.aoa_to_sheet(data);
+
+  // Column widths
+  ws['!cols']=[{wch:18},{wch:14},{wch:22},{wch:14},{wch:40}];
+
+  // Style header row
+  var range=XLSX.utils.decode_range(ws['!ref']);
+  for(var C=range.s.c;C<=range.e.c;C++){
+    var cell=ws[XLSX.utils.encode_cell({r:0,c:C})];
+    if(!cell)continue;
+    cell.s={fill:{fgColor:{rgb:'2E75B6'}},font:{bold:true,color:{rgb:'FFFFFF'}},alignment:{horizontal:'center'}};
+  }
+  // Style data rows
+  for(var R=1;R<data.length-1;R++){
+    for(var C=0;C<=4;C++){
+      var cell=ws[XLSX.utils.encode_cell({r:R,c:C})];
+      if(!cell)continue;
+      cell.s={fill:{fgColor:{rgb:'FCE4D6'}}};
+    }
+  }
+  // Total row
+  var lastR=data.length-1;
+  for(var C=0;C<=4;C++){
+    var cell=ws[XLSX.utils.encode_cell({r:lastR,c:C})];
+    if(!cell)continue;
+    cell.s={fill:{fgColor:{rgb:'2E75B6'}},font:{bold:true,color:{rgb:'FFFFFF'}}};
+  }
+
+  XLSX.utils.book_append_sheet(wb,ws,'Summary');
+  XLSX.writeFile(wb,'revenue-summary-'+MONTH_NAMES[S.currentMonth]+'.xlsx');
+}
+
+// ══════════════════════════════════════════
+// GMAIL SUMMARY
+// ══════════════════════════════════════════
+function gmailSummary(){
+  var r=S.result;
+  var depts=uniqueDepts(r.matched);
+  var rows=depts.map(function(d){
+    var items=r.matched.filter(function(x){return x.dept===d;});
+    var revenue=items.reduce(function(s,x){return s+x.actual;},0);
+    var forecast=items.reduce(function(s,x){return s+x.forecast;},0);
+    return{division:d,revenue:revenue,forecast:forecast,variance:revenue-forecast,remarks:(S.remarksCustom[d]||S.remarksAuto[d]||'')};
+  });
+  var totalR=rows.reduce(function(s,r){return s+r.revenue;},0);
+  var totalF=rows.reduce(function(s,r){return s+r.forecast;},0);
+  var totalV=totalR-totalF;
+
+  var body=MONTH_NAMES[S.currentMonth]+' Revenue Variance Summary — Mobius Group\n\n';
+  body+='Division          | Revenue        | Forecast       | Variance       | Remarks\n';
+  body+='─'.repeat(90)+'\n';
+  rows.forEach(function(r){
+    body+=padR(r.division,18)+'| '+padL(fmt(r.revenue),14)+'| '+padL(fmt(r.forecast),14)+'| '+padL((r.variance>=0?'+':'')+fmt(r.variance),14)+'| '+r.remarks+'\n';
+  });
+  body+='─'.repeat(90)+'\n';
+  body+='Services TOTAL    | '+padL(fmt(totalR),14)+'| '+padL(fmt(totalF),14)+'| '+padL((totalV>=0?'+':'')+fmt(totalV),14)+'|\n';
+
+  var sub=encodeURIComponent(MONTH_NAMES[S.currentMonth]+' Revenue Variance Report — Mobius Group');
+  var bod=encodeURIComponent(body);
+  window.open('https://mail.google.com/mail/?view=cm&fs=1&su='+sub+'&body='+bod,'_blank');
+}
+
+// ══════════════════════════════════════════
+// DOWNLOADS
+// ══════════════════════════════════════════
+function dlCSV(type){
+  var r=S.result,rows,fname;
+  if(type==='main'){
+    rows=[['Dept','Project ID','Project Name','Customer','Actual (USD)','Forecast (USD)','Variance (USD)','Variance %','Status']];
+    r.matched.forEach(function(x){rows.push([x.dept,x.projectId,x.projectName,x.customer,x.actual.toFixed(2),x.forecast.toFixed(2),x.variance.toFixed(2),x.varPct.toFixed(2)+'%',x.aboveThreshold?(x.variance>=0?'Over':'Under'):'Within']);});
+    fname='variance-analysis.csv';
+  }else if(type==='alerts'){
+    rows=[['Dept','Project ID','Project Name','Actual (USD)','Forecast (USD)','Variance (USD)','Variance %','Alert']];
+    r.alerts.forEach(function(x){rows.push([x.dept,x.projectId,x.projectName,x.actual.toFixed(2),x.forecast.toFixed(2),x.variance.toFixed(2),x.varPct.toFixed(2)+'%',x.variance>=0?'Over':'Under']);});
+    fname='variance-alerts.csv';
+  }else{
+    rows=[['Practice','Project ID','Project Name','Customer','Actual (USD)']];
+    r.unforecasted.forEach(function(x){rows.push([x.practice,x.projectId,x.projectName,x.customer,x.actual.toFixed(2)]);});
+    fname='unforecasted.csv';
+  }
+  dlBlob(rows.map(function(r){return r.map(function(c){return '"'+c+'"';}).join(',');}).join('\n'),fname,'text/csv');
+}
+
+function dlXLSX(type,deptFilter){
+  if (type==='zero') {
+    var data=[['Dept','Project ID','Project Name','Customer','Actual (USD)','Forecast (USD)','Variance (USD)','Flag']];
+    (S.result.zeroForecast||[]).forEach(function(x){data.push([x.dept,x.projectId,x.projectName,x.customer,x.actual,0,x.variance,'Zero Forecast']);});
+    var wb2=XLSX.utils.book_new();
+    var ws2=XLSX.utils.aoa_to_sheet(data);
+    ws2['!cols']=[{wch:10},{wch:12},{wch:28},{wch:22},{wch:13},{wch:13},{wch:13},{wch:14}];
+    XLSX.utils.book_append_sheet(wb2,ws2,'Zero Forecast');
+    XLSX.writeFile(wb2,'zero-forecast-'+MONTH_NAMES[S.currentMonth]+'.xlsx');
+    return;
+  }
+  var r=S.result,data,fname,ws;
+  if(type==='main'){
+    var src=deptFilter&&deptFilter!=='ALL'?r.matched.filter(function(x){return x.dept===deptFilter;}):r.matched;
+    data=[['Dept','Project ID','Project Name','Customer','Actual (USD)','Forecast (USD)','Variance (USD)','Variance %','Status']];
+    src.forEach(function(x){data.push([x.dept,x.projectId,x.projectName,x.customer,x.actual,x.forecast,x.variance,x.varPct/100,x.aboveThreshold?(x.variance>=0?'Over':'Under'):'Within']);});
+    fname='variance-'+(deptFilter&&deptFilter!=='ALL'?deptFilter+'-':'')+'analysis.xlsx';
+  }else if(type==='alerts'){
+    data=[['Dept','Project ID','Project Name','Actual (USD)','Forecast (USD)','Variance (USD)','Variance %','Alert']];
+    r.alerts.forEach(function(x){data.push([x.dept,x.projectId,x.projectName,x.actual,x.forecast,x.variance,x.varPct/100,x.variance>=0?'Over':'Under']);});
+    fname='variance-alerts.xlsx';
+  }else{
+    data=[['Practice','Project ID','Project Name','Customer','Actual (USD)']];
+    r.unforecasted.forEach(function(x){data.push([x.practice,x.projectId,x.projectName,x.customer,x.actual]);});
+    fname='unforecasted.xlsx';
+  }
+  var wb=XLSX.utils.book_new();
+  ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:10},{wch:12},{wch:28},{wch:22},{wch:14},{wch:14},{wch:14},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws,'Data');
+  XLSX.writeFile(wb,fname);
+}
+
+function dlBlob(content,fname,mime){
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download=fname;a.click();
+}
+
+// ══════════════════════════════════════════
+// EMAIL BUILDER
+// ══════════════════════════════════════════
+function buildEmail(){
+  var r=S.result;
+  var user=JSON.parse(sessionStorage.getItem('revsync_user')||'{}');
+  var today=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  var mName=MONTH_NAMES[S.currentMonth]||'Monthly';
+  var depts=uniqueDepts(r.matched);
+  var deptSum=depts.map(function(d){
+    var rows=r.matched.filter(function(x){return x.dept===d;});
+    var a=rows.reduce(function(s,x){return s+x.actual;},0);
+    var f=rows.reduce(function(s,x){return s+x.forecast;},0);
+    var v=a-f;
+    var remark = (S.remarksCustom[d]||S.remarksAuto[d]||'');
+    return '  '+padR(d,12)+' | Actual: '+padL(fmt(a),12)+' | Forecast: '+padL(fmt(f),12)+' | Variance: '+padL((v>=0?'+':'')+fmt(v),13)+(remark?' | '+remark:'');
+  }).join('\n');
+  var alertLines=r.alerts.length>0?r.alerts.map(function(a){
+    return '  ['+a.dept+'] '+a.projectId+' — '+(a.projectName||'')+'\n    Actual: '+fmt(a.actual)+' | Forecast: '+fmt(a.forecast)+' | Variance: '+(a.variance>=0?'+':'')+fmt(a.variance)+' ('+a.varPct.toFixed(1)+'%)';
+  }).join('\n\n'):'  No alerts — all projects within threshold.';
+  var unfLines=r.unforecasted.length>0?r.unforecasted.map(function(u){
+    return '  ['+u.practice+'] '+u.projectId+' — '+(u.projectName||'')+' | Actual: '+fmt(u.actual);
+  }).join('\n'):'  None';
+  return 'Subject: '+mName+' Revenue Variance Report — Mobius Group\nDate: '+today+'\nPrepared by: '+(user.name||'RevSync')+'\n\n'+
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'+
+    'MONTHLY VARIANCE REPORT — '+mName.toUpperCase()+'\nMobius Knowledge Services\n'+
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'+
+    'EXECUTIVE SUMMARY\n─────────────────\n'+
+    '  Total Actual Revenue  : '+fmt(r.totalActual)+'\n'+
+    '  Total Forecast        : '+fmt(r.totalForecast)+'\n'+
+    '  Net Variance          : '+(r.totalVariance>=0?'+':'')+fmt(r.totalVariance)+'\n'+
+    '  Alert Threshold       : '+fmt(S.threshold)+'\n'+
+    '  Projects Above Alert  : '+r.alerts.length+'\n\n'+
+    'DEPARTMENT-WISE SUMMARY\n────────────────────────\n'+deptSum+'\n\n'+
+    'VARIANCE ALERTS (|Variance| ≥ '+fmt(S.threshold)+')\n'+'─'.repeat(48)+'\n'+alertLines+'\n\n'+
+    'UNFORECASTED REVENUE\n─────────────────────\n'+unfLines+'\n\n'+
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'+
+    'Generated by RevSync · Mobius Knowledge Services · '+today+'\n'+
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+}
+
+// ══════════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════════
+async function loadHistory(){
+  if(!S.sheetsReady){renderHistSidebar();return;}
+  try{
+    var url='https://sheets.googleapis.com/v4/spreadsheets/'+SHEETS_CFG.SHEET_ID+'/values/'+SHEETS_CFG.TAB+'!A:I?key='+SHEETS_CFG.API_KEY;
+    var res=await fetch(url);var data=await res.json();
+    if(!data.values||data.values.length<2){S.history=[];renderHistSidebar();return;}
+    var headers=data.values[0];
+    S.history=data.values.slice(1).map(function(row,i){
+      var obj={};headers.forEach(function(h,j){obj[h]=row[j]||'';});
+      return{id:obj.id||('r'+i),monthLabel:obj.monthLabel,savedOn:obj.savedOn,
+        totalActual:parseFloat(obj.totalActual)||0,totalForecast:parseFloat(obj.totalForecast)||0,
+        netVariance:parseFloat(obj.netVariance)||0,alertCount:parseInt(obj.alertCount)||0,
+        threshold:parseFloat(obj.threshold)||1000,resultJson:obj.resultJson||''};
+    }).reverse();
+  }catch(e){S.history=[];}
+  renderHistSidebar();
+}
+
+function renderHistSidebar(){
+  var el=document.getElementById('histList');
+  if(!S.history.length){el.innerHTML='<div class="hist-empty">No saved months</div>';return;}
+  el.innerHTML=S.history.slice(0,5).map(function(h){
+    return '<div class="hist-row" onclick="viewHistory(\''+h.id+'\')"><span>'+h.monthLabel+'</span><span class="hist-badge">'+h.alertCount+' alerts</span></div>';
+  }).join('');
+}
+
+function viewHistory(id){
+  var item=S.history.find(function(h){return h.id===id;});if(!item)return;
+  try{S.result=JSON.parse(item.resultJson);S.viewingHist=item;nav('overview');}
+  catch(e){showToast('❌ Could not load this month');}
+}
+
+function deleteHistory(id){
+  if(!confirm('Delete this month from history?'))return;
+  S.history=S.history.filter(function(h){return h.id!==id;});
+  renderHistSidebar();pageHistory();showToast('🗑 Deleted');
+}
+
+async function saveHistory(){
+  if(!S.sheetsReady)return;
+  var r=S.result;
+  var payload={id:S.currentMonth+'_'+Date.now(),monthLabel:MONTH_NAMES[S.currentMonth]+' 2026',
+    savedOn:new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),
+    totalActual:r.totalActual.toFixed(2),totalForecast:r.totalForecast.toFixed(2),
+    netVariance:r.totalVariance.toFixed(2),alertCount:r.alerts.length,
+    threshold:S.threshold,resultJson:JSON.stringify(r)};
+  try{await fetch(SHEETS_CFG.SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});await loadHistory();}
+  catch(e){console.error(e);}
+}
+
+// ══════════════════════════════════════════
+// MISSING HELPERS (were called but not defined)
+// ══════════════════════════════════════════
+
+// Build month labels for matching — returns array of all plausible variants
+// so we can match whatever format the forecast file uses
+function buildMonthLabel(monthNum) {
+  var shortNames = {1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'May',6:'Jun',
+                    7:'Jul',8:'Aug',9:'Sep',10:'Oct',11:'Nov',12:'Dec'};
+  var fullNames  = {1:'January',2:'February',3:'March',4:'April',5:'May',6:'June',
+                    7:'July',8:'August',9:'September',10:'October',11:'November',12:'December'};
+  var short = shortNames[monthNum];
+  var full  = fullNames[monthNum];
+  var monNum = String(monthNum).padStart(2,'0');
+
+  // We don't know what fiscal year the file uses, so generate labels for
+  // both current year and adjacent years — the matching function tries all of them
+  var now = new Date();
+  var years = [now.getFullYear()-1, now.getFullYear(), now.getFullYear()+1];
+
+  var variants = [];
+  years.forEach(function(yr) {
+    var yy = String(yr).slice(2);
+    variants.push(short+'-'+yy);           // Feb-25
+    variants.push(short+' '+yr);           // Feb 2025
+    variants.push(full+' '+yr);            // February 2025
+    variants.push(full+'-'+yr);            // February-2025
+    variants.push(monNum+'-'+yr);          // 02-2025
+    variants.push(monNum+'/'+yr);          // 02/2025
+    variants.push(yr+'-'+monNum);          // 2025-02
+    variants.push(short+'-'+yr);           // Feb-2025
+  });
+  return variants;
+}
+
+// Return true if a cell value from the Month column matches any of our label variants
+function monthMatchesLabel(cellVal, labelVariants) {
+  if (!cellVal) return false;
+  var lc = String(cellVal).toLowerCase().trim();
+  // Handle JS Date objects serialised as date serial numbers by xlsx
+  // (XLSX sometimes returns month cells as Date objects)
+  if (cellVal instanceof Date) {
+    var mo = String(cellVal.getMonth()+1).padStart(2,'0');
+    var yr = cellVal.getFullYear();
+    // rebuild cellVal as "MM/YYYY" to match against variants
+    lc = mo+'/'+yr;
+  }
+  return labelVariants.some(function(v){ return lc.includes(v.toLowerCase()); });
+}
+
+// Map a practice/division name from the forecast file to one of the 8 known dept codes
+function mapPracticeToDept(prac) {
+  if (!prac) return 'Unknown';
+  var p = prac.toLowerCase().trim();
+  // Exact names from the actual Revenue Flash file
+  if (p === 'data research'   || p.includes('data research'))  return 'Data Research';
+  if (p === 'digitization'    || p.includes('digitiz'))        return 'Digitization';
+  if (p === 'erthc'           || p.includes('erthc'))          return 'eRTHC';
+  if (p === 'lease'           || p.includes('lease'))          return 'Lease';
+  if (p === 'locations data'  || p.includes('location'))       return 'Locations Data';
+  if (p === 'software/aiml'   || p.includes('software') || p.includes('aiml')) return 'Software/AIML';
+  if (p === 'corporate'       || p.includes('corporate'))      return 'Corporate';
+  if (p === 'javelin'         || p.includes('javelin'))        return 'Javelin';
+  // Legacy dept tab names
+  if (p.includes('dr-bps') || p.includes('dr bps') || p.includes('bps')) return 'DR-BPS';
+  if (p.includes('msd'))                                        return 'MSD';
+  if (p.includes('poi') || p.includes('property'))             return 'POI';
+  if (p.includes('dig') && !p.includes('digit'))               return 'DIG';
+  // Fall back: return as-is
+  return prac.trim();
+}
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function uniqueDepts(matched){
+  var d=[];matched.forEach(function(x){if(d.indexOf(x.dept)===-1)d.push(x.dept);});return d;
+}
+function fmt(v){
+  if(isNaN(v)||v==null)return '$0';
+  return '$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtK(v){var a=Math.abs(v);return(v>=0?'+':'-')+'$'+(a>=1000?(a/1000).toFixed(1)+'k':a.toFixed(0));}
+function padR(s,n){s=String(s);while(s.length<n)s+=' ';return s;}
+function padL(s,n){s=String(s);while(s.length<n)s=' '+s;return s;}
+function deptClass(d){
+  var m={'eRTHC':'db-erthc','DR-BPS':'db-drbps','MSD':'db-msd','POI':'db-poi','Lease':'db-lease','DIG':'db-dig','Software':'db-sw','AIML':'db-aiml'};
+  return m[d]||'db-other';
+}
+function escapeHtml(t){
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escHtml(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function showLoading(t){document.getElementById('loadingText').textContent=t;document.getElementById('loadingOverlay').classList.add('show');}
+function setLoadingText(t){document.getElementById('loadingText').textContent=t;}
+function hideLoading(){document.getElementById('loadingOverlay').classList.remove('show');}
+function showToast(msg){
+  var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},3000);
+}
+</script>
+</body>
+</html>
